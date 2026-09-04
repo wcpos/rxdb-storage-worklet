@@ -28,7 +28,16 @@
       "default": "./lib/node.js"
     }
   },
-  "files": ["apple", "cpp", "lib", "src", "WorkletFs.podspec", "react-native.config.js"],
+  "files": [
+    "lib",
+    "src",
+    "cpp",
+    "apple",
+    "android/build.gradle",
+    "android/src",
+    "WorkletFs.podspec",
+    "react-native.config.js"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --maxWorkers=2",
