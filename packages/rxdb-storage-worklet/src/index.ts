@@ -20,6 +20,7 @@ type WorkletsModule = {
 };
 
 function globals(): Record<string, unknown> {
+  'worklet';
   return globalThis as unknown as Record<string, unknown>;
 }
 

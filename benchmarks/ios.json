@@ -1,0 +1,113 @@
+{
+  "platform": "ios",
+  "modes": {
+    "js-filesystem": {
+      "medianSample": 2,
+      "steps": {
+        "bulkInsert500Ms": 47.09995794296265,
+        "tenQueriesMs": 13.191708981990814,
+        "findByIds200Ms": 0.09883302450180054,
+        "reactiveInsert200Ms": 16.904666006565094
+      },
+      "rnSendMs": 0,
+      "lag": {
+        "totalBlockedMs": 201.19612503051758,
+        "maxLagMs": 148.58224999904633,
+        "ticksOver50Ms": 1,
+        "series": [
+          148.58224999904633,
+          34.34883397817612,
+          0,
+          16.29637497663498,
+          0
+        ]
+      },
+      "persistence": {
+        "expected": 50,
+        "actual": 50,
+        "pass": true
+      }
+    },
+    "js-memory": {
+      "medianSample": 2,
+      "steps": {
+        "bulkInsert500Ms": 3.093167006969452,
+        "tenQueriesMs": 1.6073749661445618,
+        "findByIds200Ms": 0.08716702461242676,
+        "reactiveInsert200Ms": 1.4569169878959656
+      },
+      "rnSendMs": 0,
+      "lag": {
+        "totalBlockedMs": 49.28158402442932,
+        "maxLagMs": 17.59266698360443,
+        "ticksOver50Ms": 0,
+        "series": [
+          15.95974999666214,
+          16.64191699028015,
+          16.67991703748703,
+          0
+        ]
+      },
+      "persistence": {
+        "expected": 50,
+        "actual": 50,
+        "pass": true
+      }
+    },
+    "worklet-filesystem": {
+      "medianSample": 2,
+      "steps": {
+        "bulkInsert500Ms": 99.8385419845581,
+        "tenQueriesMs": 11.195457994937897,
+        "findByIds200Ms": 0.10008299350738525,
+        "reactiveInsert200Ms": 34.85800004005432
+      },
+      "rnSendMs": 19.171995043754578,
+      "lag": {
+        "totalBlockedMs": 66.64200001955032,
+        "maxLagMs": 16.79741597175598,
+        "ticksOver50Ms": 0,
+        "series": [
+          15.964000046253204,
+          16.79741597175598,
+          4.133791983127594,
+          12.605000019073486,
+          16.2637500166893,
+          0.8780419826507568
+        ]
+      },
+      "persistence": {
+        "expected": 50,
+        "actual": 50,
+        "pass": true
+      }
+    },
+    "worklet-memory": {
+      "medianSample": 1,
+      "steps": {
+        "bulkInsert500Ms": 58.02904099225998,
+        "tenQueriesMs": 3.3960829973220825,
+        "findByIds200Ms": 0.10254102945327759,
+        "reactiveInsert200Ms": 25.47699999809265
+      },
+      "rnSendMs": 19.127042710781097,
+      "lag": {
+        "totalBlockedMs": 66.35025000572205,
+        "maxLagMs": 17.236333966255188,
+        "ticksOver50Ms": 0,
+        "series": [
+          19.46191704273224,
+          15.216499984264374,
+          14.580582976341248,
+          16.66412502527237,
+          0.5858749747276306
+        ]
+      },
+      "persistence": {
+        "expected": 50,
+        "actual": 50,
+        "pass": true
+      }
+    }
+  }
+}
