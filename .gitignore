@@ -1,0 +1,10 @@
+node_modules
+.pnpm-store
+.env
+.expo
+ios/
+android/
+dist
+lib
+*.tsbuildinfo
+.DS_Store

@@ -1,0 +1,6 @@
+{
+  "name": "worklet-fs",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "react-native": "src/index.ts"
+}

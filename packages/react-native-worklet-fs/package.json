@@ -1,0 +1,29 @@
+{
+  "name": "react-native-worklet-fs",
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "react-native": "./src/index.ts",
+  "source": "./src/index.ts",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.ts",
+      "source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./node": {
+      "source": "./src/node.ts",
+      "types": "./lib/node.d.ts",
+      "default": "./lib/node.js"
+    }
+  },
+  "files": ["lib", "src"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --maxWorkers=2",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

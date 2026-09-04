@@ -1,0 +1,36 @@
+{
+  "name": "rxdb-storage-worklet",
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "react-native": "./src/index.ts",
+  "source": "./src/index.ts",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.ts",
+      "source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": ["lib", "src"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --maxWorkers=2",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "rxdb": "17.4.0",
+    "rxjs": "7.8.2"
+  },
+  "peerDependencies": {
+    "react-native-worklets": "0.11.4"
+  },
+  "peerDependenciesMeta": {
+    "react-native-worklets": {
+      "optional": true
+    }
+  }
+}

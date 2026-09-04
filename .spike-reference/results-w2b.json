@@ -1,0 +1,406 @@
+{
+  "driver": "Maestro tapOn by button text",
+  "runCountPerModePerPlatform": 3,
+  "platforms": {
+    "ios": {
+      "spikeResultLines": [
+        "SPIKE_RESULT {\"mode\":\"worklet-memory\",\"steps\":{\"bulkInsert500Ms\":313.29283303022385,\"tenQueriesMs\":7.074041962623596,\"findByIds200Ms\":0.13683301210403442,\"reactiveInsert200Ms\":154.53583401441574},\"rnSendMs\":204.3127919435501,\"lag\":{\"totalBlockedMs\":139.80558401346207,\"maxLagMs\":58.790041983127594,\"ticksOver50Ms\":1}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory\",\"steps\":{\"bulkInsert500Ms\":313.65829199552536,\"tenQueriesMs\":2.625249981880188,\"findByIds200Ms\":0.10100001096725464,\"reactiveInsert200Ms\":130.203125},\"rnSendMs\":210.4222510457039,\"lag\":{\"totalBlockedMs\":92.45279097557068,\"maxLagMs\":17.6092090010643,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory\",\"steps\":{\"bulkInsert500Ms\":336.85162502527237,\"tenQueriesMs\":1.6254169940948486,\"findByIds200Ms\":0.09904199838638306,\"reactiveInsert200Ms\":127.17300003767014},\"rnSendMs\":211.53508204221725,\"lag\":{\"totalBlockedMs\":123.32775002717972,\"maxLagMs\":47.02291697263718,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory-string\",\"steps\":{\"bulkInsert500Ms\":65.76187497377396,\"tenQueriesMs\":7.746457993984222,\"findByIds200Ms\":0.12445801496505737,\"reactiveInsert200Ms\":23.62387502193451},\"rnSendMs\":29.6630420088768,\"lag\":{\"totalBlockedMs\":13.9998340010643,\"maxLagMs\":8.850917041301727,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory-string\",\"steps\":{\"bulkInsert500Ms\":63.89133304357529,\"tenQueriesMs\":14.390666007995605,\"findByIds200Ms\":0.09237498044967651,\"reactiveInsert200Ms\":24.25299996137619},\"rnSendMs\":30.373834013938904,\"lag\":{\"totalBlockedMs\":18.164792001247406,\"maxLagMs\":10.859916985034943,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory-string\",\"steps\":{\"bulkInsert500Ms\":63.46933299303055,\"tenQueriesMs\":4.2449169754981995,\"findByIds200Ms\":0.09500002861022949,\"reactiveInsert200Ms\":27.50366699695587},\"rnSendMs\":31.108582079410553,\"lag\":{\"totalBlockedMs\":13.340875029563904,\"maxLagMs\":9.528459012508392,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"js-thread-memory\",\"steps\":{\"bulkInsert500Ms\":4.6279590129852295,\"tenQueriesMs\":2.283041000366211,\"findByIds200Ms\":0.09595799446105957,\"reactiveInsert200Ms\":2.3763750195503235},\"rnSendMs\":0,\"lag\":{\"totalBlockedMs\":0,\"maxLagMs\":0,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"js-thread-memory\",\"steps\":{\"bulkInsert500Ms\":4.738165974617004,\"tenQueriesMs\":1.2885839939117432,\"findByIds200Ms\":0.0985419750213623,\"reactiveInsert200Ms\":2.4605000019073486},\"rnSendMs\":0,\"lag\":{\"totalBlockedMs\":0,\"maxLagMs\":0,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"js-thread-memory\",\"steps\":{\"bulkInsert500Ms\":4.563166975975037,\"tenQueriesMs\":1.5390419960021973,\"findByIds200Ms\":0.10320800542831421,\"reactiveInsert200Ms\":1.5891660451889038},\"rnSendMs\":0,\"lag\":{\"totalBlockedMs\":0,\"maxLagMs\":0,\"ticksOver50Ms\":0}}"
+      ],
+      "runs": [
+        {
+          "mode": "worklet-memory",
+          "steps": {
+            "bulkInsert500Ms": 313.29283303022385,
+            "tenQueriesMs": 7.074041962623596,
+            "findByIds200Ms": 0.13683301210403442,
+            "reactiveInsert200Ms": 154.53583401441574
+          },
+          "rnSendMs": 204.3127919435501,
+          "lag": {
+            "totalBlockedMs": 139.80558401346207,
+            "maxLagMs": 58.790041983127594,
+            "ticksOver50Ms": 1
+          }
+        },
+        {
+          "mode": "worklet-memory",
+          "steps": {
+            "bulkInsert500Ms": 313.65829199552536,
+            "tenQueriesMs": 2.625249981880188,
+            "findByIds200Ms": 0.10100001096725464,
+            "reactiveInsert200Ms": 130.203125
+          },
+          "rnSendMs": 210.4222510457039,
+          "lag": {
+            "totalBlockedMs": 92.45279097557068,
+            "maxLagMs": 17.6092090010643,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "worklet-memory",
+          "steps": {
+            "bulkInsert500Ms": 336.85162502527237,
+            "tenQueriesMs": 1.6254169940948486,
+            "findByIds200Ms": 0.09904199838638306,
+            "reactiveInsert200Ms": 127.17300003767014
+          },
+          "rnSendMs": 211.53508204221725,
+          "lag": {
+            "totalBlockedMs": 123.32775002717972,
+            "maxLagMs": 47.02291697263718,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "worklet-memory-string",
+          "steps": {
+            "bulkInsert500Ms": 65.76187497377396,
+            "tenQueriesMs": 7.746457993984222,
+            "findByIds200Ms": 0.12445801496505737,
+            "reactiveInsert200Ms": 23.62387502193451
+          },
+          "rnSendMs": 29.6630420088768,
+          "lag": {
+            "totalBlockedMs": 13.9998340010643,
+            "maxLagMs": 8.850917041301727,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "worklet-memory-string",
+          "steps": {
+            "bulkInsert500Ms": 63.89133304357529,
+            "tenQueriesMs": 14.390666007995605,
+            "findByIds200Ms": 0.09237498044967651,
+            "reactiveInsert200Ms": 24.25299996137619
+          },
+          "rnSendMs": 30.373834013938904,
+          "lag": {
+            "totalBlockedMs": 18.164792001247406,
+            "maxLagMs": 10.859916985034943,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "worklet-memory-string",
+          "steps": {
+            "bulkInsert500Ms": 63.46933299303055,
+            "tenQueriesMs": 4.2449169754981995,
+            "findByIds200Ms": 0.09500002861022949,
+            "reactiveInsert200Ms": 27.50366699695587
+          },
+          "rnSendMs": 31.108582079410553,
+          "lag": {
+            "totalBlockedMs": 13.340875029563904,
+            "maxLagMs": 9.528459012508392,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "js-thread-memory",
+          "steps": {
+            "bulkInsert500Ms": 4.6279590129852295,
+            "tenQueriesMs": 2.283041000366211,
+            "findByIds200Ms": 0.09595799446105957,
+            "reactiveInsert200Ms": 2.3763750195503235
+          },
+          "rnSendMs": 0,
+          "lag": {
+            "totalBlockedMs": 0,
+            "maxLagMs": 0,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "js-thread-memory",
+          "steps": {
+            "bulkInsert500Ms": 4.738165974617004,
+            "tenQueriesMs": 1.2885839939117432,
+            "findByIds200Ms": 0.0985419750213623,
+            "reactiveInsert200Ms": 2.4605000019073486
+          },
+          "rnSendMs": 0,
+          "lag": {
+            "totalBlockedMs": 0,
+            "maxLagMs": 0,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "js-thread-memory",
+          "steps": {
+            "bulkInsert500Ms": 4.563166975975037,
+            "tenQueriesMs": 1.5390419960021973,
+            "findByIds200Ms": 0.10320800542831421,
+            "reactiveInsert200Ms": 1.5891660451889038
+          },
+          "rnSendMs": 0,
+          "lag": {
+            "totalBlockedMs": 0,
+            "maxLagMs": 0,
+            "ticksOver50Ms": 0
+          }
+        }
+      ],
+      "medians": {
+        "worklet-memory": {
+          "steps": {
+            "bulkInsert500Ms": 313.65829199552536,
+            "tenQueriesMs": 2.625249981880188,
+            "findByIds200Ms": 0.10100001096725464,
+            "reactiveInsert200Ms": 130.203125
+          },
+          "rnSendMs": 210.4222510457039,
+          "lag": {
+            "totalBlockedMs": 123.32775002717972,
+            "maxLagMs": 47.02291697263718,
+            "ticksOver50Ms": 0
+          }
+        },
+        "worklet-memory-string": {
+          "steps": {
+            "bulkInsert500Ms": 63.89133304357529,
+            "tenQueriesMs": 7.746457993984222,
+            "findByIds200Ms": 0.09500002861022949,
+            "reactiveInsert200Ms": 24.25299996137619
+          },
+          "rnSendMs": 30.373834013938904,
+          "lag": {
+            "totalBlockedMs": 13.9998340010643,
+            "maxLagMs": 9.528459012508392,
+            "ticksOver50Ms": 0
+          }
+        },
+        "js-thread-memory": {
+          "steps": {
+            "bulkInsert500Ms": 4.6279590129852295,
+            "tenQueriesMs": 1.5390419960021973,
+            "findByIds200Ms": 0.0985419750213623,
+            "reactiveInsert200Ms": 2.3763750195503235
+          },
+          "rnSendMs": 0,
+          "lag": {
+            "totalBlockedMs": 0,
+            "maxLagMs": 0,
+            "ticksOver50Ms": 0
+          }
+        }
+      }
+    },
+    "android": {
+      "spikeResultLines": [
+        "SPIKE_RESULT {\"mode\":\"worklet-memory\",\"steps\":{\"bulkInsert500Ms\":466.4305010000244,\"tenQueriesMs\":15.186708000022918,\"findByIds200Ms\":0.27129099995363504,\"reactiveInsert200Ms\":216.7527499999851},\"rnSendMs\":290.64262299996335,\"lag\":{\"totalBlockedMs\":410.11375100002624,\"maxLagMs\":95.4242919998942,\"ticksOver50Ms\":3}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory\",\"steps\":{\"bulkInsert500Ms\":464.2532920000376,\"tenQueriesMs\":4.700958999921568,\"findByIds200Ms\":0.10791700007393956,\"reactiveInsert200Ms\":190.70670800004154},\"rnSendMs\":302.0498320001643,\"lag\":{\"totalBlockedMs\":216.91579200001433,\"maxLagMs\":76.96404099999927,\"ticksOver50Ms\":1}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory\",\"steps\":{\"bulkInsert500Ms\":1926.843249999918,\"tenQueriesMs\":26.526375000015832,\"findByIds200Ms\":0.35537500004284084,\"reactiveInsert200Ms\":1034.044458999997},\"rnSendMs\":957.7557939996477,\"lag\":{\"totalBlockedMs\":1615.3865019998048,\"maxLagMs\":282.0727509999415,\"ticksOver50Ms\":7}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory-string\",\"steps\":{\"bulkInsert500Ms\":98.26150000002235,\"tenQueriesMs\":10.041792000061832,\"findByIds200Ms\":0.1203329999698326,\"reactiveInsert200Ms\":34.37237500003539},\"rnSendMs\":39.72658200003207,\"lag\":{\"totalBlockedMs\":32.414292000001296,\"maxLagMs\":16.526459000073373,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory-string\",\"steps\":{\"bulkInsert500Ms\":104.83145800000057,\"tenQueriesMs\":4.897125000017695,\"findByIds200Ms\":0.09808299993164837,\"reactiveInsert200Ms\":22.60525000002235},\"rnSendMs\":43.9514149997849,\"lag\":{\"totalBlockedMs\":39.46487599995453,\"maxLagMs\":17.914749999996275,\"ticksOver50Ms\":0}}",
+        "SPIKE_RESULT {\"mode\":\"worklet-memory-string\",\"steps\":{\"bulkInsert500Ms\":273.954250000068,\"tenQueriesMs\":88.39379200001713,\"findByIds200Ms\":3.4100409999955446,\"reactiveInsert200Ms\":66.72750000003725},\"rnSendMs\":72.14912299998105,\"lag\":{\"totalBlockedMs\":182.0106669999659,\"maxLagMs\":61.3720420000609,\"ticksOver50Ms\":2}}",
+        "SPIKE_RESULT {\"mode\":\"js-thread-memory\",\"steps\":{\"bulkInsert500Ms\":4.262917000101879,\"tenQueriesMs\":8.773958000005223,\"findByIds200Ms\":0.11733300006017089,\"reactiveInsert200Ms\":5.99191699991934},\"rnSendMs\":0,\"lag\":{\"totalBlockedMs\":224.01304099999834,\"maxLagMs\":224.01304099999834,\"ticksOver50Ms\":1}}",
+        "SPIKE_RESULT {\"mode\":\"js-thread-memory\",\"steps\":{\"bulkInsert500Ms\":4.241208999999799,\"tenQueriesMs\":3.385374999954365,\"findByIds200Ms\":0.11508299992419779,\"reactiveInsert200Ms\":1.865375000052154},\"rnSendMs\":0,\"lag\":{\"totalBlockedMs\":202.01145799993537,\"maxLagMs\":202.01145799993537,\"ticksOver50Ms\":1}}",
+        "SPIKE_RESULT {\"mode\":\"js-thread-memory\",\"steps\":{\"bulkInsert500Ms\":4.976374999969266,\"tenQueriesMs\":3.1453750000800937,\"findByIds200Ms\":0.09787500009406358,\"reactiveInsert200Ms\":3.8386249999748543},\"rnSendMs\":0,\"lag\":{\"totalBlockedMs\":0,\"maxLagMs\":0,\"ticksOver50Ms\":0}}"
+      ],
+      "runs": [
+        {
+          "mode": "worklet-memory",
+          "steps": {
+            "bulkInsert500Ms": 466.4305010000244,
+            "tenQueriesMs": 15.186708000022918,
+            "findByIds200Ms": 0.27129099995363504,
+            "reactiveInsert200Ms": 216.7527499999851
+          },
+          "rnSendMs": 290.64262299996335,
+          "lag": {
+            "totalBlockedMs": 410.11375100002624,
+            "maxLagMs": 95.4242919998942,
+            "ticksOver50Ms": 3
+          }
+        },
+        {
+          "mode": "worklet-memory",
+          "steps": {
+            "bulkInsert500Ms": 464.2532920000376,
+            "tenQueriesMs": 4.700958999921568,
+            "findByIds200Ms": 0.10791700007393956,
+            "reactiveInsert200Ms": 190.70670800004154
+          },
+          "rnSendMs": 302.0498320001643,
+          "lag": {
+            "totalBlockedMs": 216.91579200001433,
+            "maxLagMs": 76.96404099999927,
+            "ticksOver50Ms": 1
+          }
+        },
+        {
+          "mode": "worklet-memory",
+          "steps": {
+            "bulkInsert500Ms": 1926.843249999918,
+            "tenQueriesMs": 26.526375000015832,
+            "findByIds200Ms": 0.35537500004284084,
+            "reactiveInsert200Ms": 1034.044458999997
+          },
+          "rnSendMs": 957.7557939996477,
+          "lag": {
+            "totalBlockedMs": 1615.3865019998048,
+            "maxLagMs": 282.0727509999415,
+            "ticksOver50Ms": 7
+          }
+        },
+        {
+          "mode": "worklet-memory-string",
+          "steps": {
+            "bulkInsert500Ms": 98.26150000002235,
+            "tenQueriesMs": 10.041792000061832,
+            "findByIds200Ms": 0.1203329999698326,
+            "reactiveInsert200Ms": 34.37237500003539
+          },
+          "rnSendMs": 39.72658200003207,
+          "lag": {
+            "totalBlockedMs": 32.414292000001296,
+            "maxLagMs": 16.526459000073373,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "worklet-memory-string",
+          "steps": {
+            "bulkInsert500Ms": 104.83145800000057,
+            "tenQueriesMs": 4.897125000017695,
+            "findByIds200Ms": 0.09808299993164837,
+            "reactiveInsert200Ms": 22.60525000002235
+          },
+          "rnSendMs": 43.9514149997849,
+          "lag": {
+            "totalBlockedMs": 39.46487599995453,
+            "maxLagMs": 17.914749999996275,
+            "ticksOver50Ms": 0
+          }
+        },
+        {
+          "mode": "worklet-memory-string",
+          "steps": {
+            "bulkInsert500Ms": 273.954250000068,
+            "tenQueriesMs": 88.39379200001713,
+            "findByIds200Ms": 3.4100409999955446,
+            "reactiveInsert200Ms": 66.72750000003725
+          },
+          "rnSendMs": 72.14912299998105,
+          "lag": {
+            "totalBlockedMs": 182.0106669999659,
+            "maxLagMs": 61.3720420000609,
+            "ticksOver50Ms": 2
+          }
+        },
+        {
+          "mode": "js-thread-memory",
+          "steps": {
+            "bulkInsert500Ms": 4.262917000101879,
+            "tenQueriesMs": 8.773958000005223,
+            "findByIds200Ms": 0.11733300006017089,
+            "reactiveInsert200Ms": 5.99191699991934
+          },
+          "rnSendMs": 0,
+          "lag": {
+            "totalBlockedMs": 224.01304099999834,
+            "maxLagMs": 224.01304099999834,
+            "ticksOver50Ms": 1
+          }
+        },
+        {
+          "mode": "js-thread-memory",
+          "steps": {
+            "bulkInsert500Ms": 4.241208999999799,
+            "tenQueriesMs": 3.385374999954365,
+            "findByIds200Ms": 0.11508299992419779,
+            "reactiveInsert200Ms": 1.865375000052154
+          },
+          "rnSendMs": 0,
+          "lag": {
+            "totalBlockedMs": 202.01145799993537,
+            "maxLagMs": 202.01145799993537,
+            "ticksOver50Ms": 1
+          }
+        },
+        {
+          "mode": "js-thread-memory",
+          "steps": {
+            "bulkInsert500Ms": 4.976374999969266,
+            "tenQueriesMs": 3.1453750000800937,
+            "findByIds200Ms": 0.09787500009406358,
+            "reactiveInsert200Ms": 3.8386249999748543
+          },
+          "rnSendMs": 0,
+          "lag": {
+            "totalBlockedMs": 0,
+            "maxLagMs": 0,
+            "ticksOver50Ms": 0
+          }
+        }
+      ],
+      "medians": {
+        "worklet-memory": {
+          "steps": {
+            "bulkInsert500Ms": 466.4305010000244,
+            "tenQueriesMs": 15.186708000022918,
+            "findByIds200Ms": 0.27129099995363504,
+            "reactiveInsert200Ms": 216.7527499999851
+          },
+          "rnSendMs": 302.0498320001643,
+          "lag": {
+            "totalBlockedMs": 410.11375100002624,
+            "maxLagMs": 95.4242919998942,
+            "ticksOver50Ms": 3
+          }
+        },
+        "worklet-memory-string": {
+          "steps": {
+            "bulkInsert500Ms": 104.83145800000057,
+            "tenQueriesMs": 10.041792000061832,
+            "findByIds200Ms": 0.1203329999698326,
+            "reactiveInsert200Ms": 34.37237500003539
+          },
+          "rnSendMs": 43.9514149997849,
+          "lag": {
+            "totalBlockedMs": 39.46487599995453,
+            "maxLagMs": 17.914749999996275,
+            "ticksOver50Ms": 0
+          }
+        },
+        "js-thread-memory": {
+          "steps": {
+            "bulkInsert500Ms": 4.262917000101879,
+            "tenQueriesMs": 3.385374999954365,
+            "findByIds200Ms": 0.11508299992419779,
+            "reactiveInsert200Ms": 3.8386249999748543
+          },
+          "rnSendMs": 0,
+          "lag": {
+            "totalBlockedMs": 202.01145799993537,
+            "maxLagMs": 202.01145799993537,
+            "ticksOver50Ms": 1
+          }
+        }
+      }
+    }
+  },
+  "errors": [
+    {
+      "platform": "android",
+      "phase": "initial attempt before successful runs",
+      "error": "[Worklets] Native part of Worklets doesn't seem to be initialized; SPIKE_ERROR worklet-memory Cannot read property 'resetRnSendMs' of undefined",
+      "resolution": "Reinstalled the existing prebuilt android/app/build/outputs/apk/debug/app-debug.apk (no native rebuild), then relaunched."
+    }
+  ],
+  "artifacts": [
+    "ios-results-table.png",
+    "android-results-table.png"
+  ]
+}
