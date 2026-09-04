@@ -1,5 +1,7 @@
 {
   "platform": "android",
+  "device": "Pixel Tablet API 35 emulator",
+  "date": "2026-09-04",
   "modes": {
     "js-filesystem": {
       "medianSample": 2,

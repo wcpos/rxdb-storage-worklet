@@ -97,7 +97,7 @@ async function createRemote(storage: RxStorage<any, any>) {
     receiveGlobalName,
     scheduleOnRN: fake.scheduleOnRN,
   }));
-  const remote = await fake.rn.run(() => getRxStorageWorklet({
+  const remote = fake.rn.run(() => getRxStorageWorklet({
     runtime: {},
     identifier: `worklet-test-${id}`,
     scheduleOnRN: fake.scheduleOnRN,
@@ -113,6 +113,16 @@ afterEach(async () => {
 });
 
 describe('worklet storage channel', () => {
+  it('returns RxStorage synchronously for createRxDatabase', () => {
+    const storage = getRxStorageWorklet({
+      runtime: {},
+      scheduleOnRN: () => undefined,
+      scheduleOnRuntime: () => undefined,
+    });
+
+    expect(storage).not.toBeInstanceOf(Promise);
+  });
+
   it('runs RxDB CRUD and subscriptions through string-only messages', async () => {
     const { fake, id, remote } = await createRemote(getRxStorageMemory());
     const database = await settle(createRxDatabase({ name: `worklet${id}`, storage: remote }), fake.drain);

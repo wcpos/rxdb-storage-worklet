@@ -1,0 +1,14 @@
+appId: com.wcpos.rxdbstorageworklet
+---
+- launchApp
+- scrollUntilVisible:
+    element:
+      id: conformance-open
+    direction: DOWN
+- tapOn:
+    id: conformance-open
+- extendedWaitUntil:
+    visible:
+      id: conformance-summary
+      text: ".*ALL PASS"
+    timeout: 600000

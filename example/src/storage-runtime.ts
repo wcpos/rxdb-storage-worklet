@@ -6,6 +6,7 @@ import {
   type WorkletRuntime,
 } from 'react-native-worklets';
 import { Subject } from 'rxjs';
+import { base64ToArrayBuffer, blobToBase64String } from 'rxdb/plugins/core';
 import { getRxStorageMemory } from 'rxdb/plugins/storage-memory';
 import { getRxStorageAbstractFilesystem } from 'rxdb-premium/plugins/storage-abstract-filesystem';
 import { exposeRxStorageRemote } from 'rxdb/plugins/storage-remote';
@@ -32,6 +33,25 @@ let rnSendMs = 0;
 function deliverFromWorklet(message: string): void {
   const receive = (globalThis as Record<string, unknown>).__rxdbReceiveString;
   if (typeof receive === 'function') (receive as (value: string) => void)(message);
+}
+
+async function receiveSerialized(message: string): Promise<any> {
+  'worklet';
+  const parsed = JSON.parse(message);
+  if (parsed.method === 'bulkWrite' && Array.isArray(parsed.params?.[0])) {
+    for (const row of parsed.params[0]) for (const attachment of Object.values(row.document?._attachments ?? {}) as any[]) {
+      if (typeof attachment.data === 'string') attachment.data = new Blob([base64ToArrayBuffer(attachment.data)], { type: attachment.type ?? '' });
+    }
+  }
+  return parsed;
+}
+
+async function sendSerialized(message: any): Promise<string> {
+  'worklet';
+  if (message.method === 'getAttachmentData' && message.return instanceof Blob) {
+    message = { ...message, return: await blobToBase64String(message.return) };
+  }
+  return JSON.stringify(message);
 }
 
 function measuredScheduleOnRuntime(
@@ -68,12 +88,12 @@ function exposeStorage(
       });
   const messages$ = new Subject<any>();
   (globalThis as Record<string, unknown>).__rxdbReceiveString = (message: string) => {
-    messages$.next(JSON.parse(message));
+    void receiveSerialized(message).then((parsed) => messages$.next(parsed));
   };
   exposeRxStorageRemote({
     storage,
     messages$,
-    send: (message) => scheduleOnRN(deliverFromWorklet, JSON.stringify(message)),
+    send: (message) => void sendSerialized(message).then((serialized) => scheduleOnRN(deliverFromWorklet, serialized)),
   });
   scheduleOnRN(ready);
 }

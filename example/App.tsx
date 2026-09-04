@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import * as Crypto from 'expo-crypto';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -18,6 +18,7 @@ import {
   type BenchmarkMedian,
   type Mode,
 } from './src/benchmark';
+import { runConformanceSmoke, type ConformanceResult } from './src/conformance-smoke';
 
 const cryptoGlobal = globalThis as any;
 cryptoGlobal.crypto ??= {};
@@ -65,7 +66,26 @@ function ResultCard({ result }: { result: BenchmarkMedian }) {
   );
 }
 
+function ConformanceScreen({ close }: { close: () => void }) {
+  const [results, setResults] = useState<ConformanceResult[]>([]);
+  const [complete, setComplete] = useState(false);
+  useEffect(() => {
+    void runConformanceSmoke((result) => setResults((current) => [...current, result]))
+      .finally(() => setComplete(true));
+  }, []);
+  const failures = results.filter((result) => !result.pass).length;
+  return <SafeAreaView style={styles.safeArea}><ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.header}><Text style={styles.eyebrow}>RXDB · DEVICE SUITE</Text><Text style={styles.title}>Conformance smoke</Text></View>
+    <Text style={failures ? styles.fail : styles.pass} testID="conformance-summary">
+      {complete ? `${results.length} scenarios · ${failures ? `FAILED ${failures}` : 'ALL PASS'}` : `${results.length} scenarios · RUNNING`}
+    </Text>
+    {results.map((result, index) => <View key={`${result.name}-${index}`} style={styles.metricRow}><Text style={styles.metricLabel}>{result.name}</Text><Text style={result.pass ? styles.pass : styles.fail}>{result.pass ? 'PASS' : 'FAIL'} · {result.detail}</Text></View>)}
+    <Pressable accessibilityRole="button" onPress={close} style={styles.button}><Text style={styles.buttonLabel}>Back to benchmarks</Text></Pressable>
+  </ScrollView></SafeAreaView>;
+}
+
 export default function App() {
+  const [screen, setScreen] = useState<'benchmark' | 'conformance'>('benchmark');
   const [running, setRunning] = useState<Mode | null>(null);
   const [lastCompleted, setLastCompleted] = useState<Mode | null>(null);
   const [sample, setSample] = useState(0);
@@ -92,6 +112,8 @@ export default function App() {
       setSample(0);
     }
   };
+
+  if (screen === 'conformance') return <ConformanceScreen close={() => setScreen('benchmark')} />;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -121,6 +143,10 @@ export default function App() {
         </View>
 
         <View style={styles.controls}>
+          <Pressable accessibilityRole="button" disabled={running !== null} onPress={() => setScreen('conformance')} style={styles.button} testID="conformance-open">
+            <Text style={styles.buttonRoute}>DEVICE TEST SUITE</Text>
+            <Text style={styles.buttonLabel}>Conformance smoke</Text>
+          </Pressable>
           {MODES.map((mode) => (
             <Pressable
               accessibilityRole="button"

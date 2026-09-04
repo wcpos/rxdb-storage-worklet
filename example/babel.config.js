@@ -13,6 +13,7 @@ module.exports = function (api) {
               'rxdb',
               'rxjs',
               'rxdb/plugins/core',
+              'rxdb/plugins/test-utils',
               'rxdb/plugins/storage-memory',
               'rxdb/plugins/storage-remote',
               'rxdb-premium/plugins/storage-abstract-filesystem',

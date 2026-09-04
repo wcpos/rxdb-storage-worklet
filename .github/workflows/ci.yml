@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,3 +19,127 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm conformance
+        env:
+          RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
+
+  ios-e2e:
+    runs-on: macos-15
+    env:
+      HAS_RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM != '' }}
+    steps:
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/checkout@v4
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        working-directory: example
+        env:
+          RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
+        run: |
+          node node_modules/rxdb-premium/scripts/postinstall.js >/dev/null 2>&1
+          node node_modules/rxdb-premium/scripts/installer.js >/dev/null 2>&1
+          npx expo prebuild --platform ios --no-install
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            example/ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'example/ios/Podfile.lock') }}
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        run: |
+          mkdir -p /tmp/maestro
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        working-directory: example
+        run: |
+          npx expo start --dev-client > /tmp/metro.log 2>&1 &
+          npx expo run:ios --no-install --no-bundler --device "iPhone 16"
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        working-directory: example
+        run: |
+          maestro test .maestro/benchmark.yaml --format junit --output /tmp/maestro/benchmark.xml --debug-output /tmp/maestro/benchmark
+          node scripts/collect-results.mjs /tmp/metro.log ios
+          maestro test .maestro/conformance-smoke.yaml --format junit --output /tmp/maestro/conformance.xml --debug-output /tmp/maestro/conformance
+      - if: always() && env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-e2e
+          path: |
+            benchmarks/
+            /tmp/maestro/
+            /tmp/metro.log
+
+  android-e2e:
+    runs-on: ubuntu-latest
+    env:
+      HAS_RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM != '' }}
+    steps:
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/checkout@v4
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        working-directory: example
+        env:
+          RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
+        run: |
+          node node_modules/rxdb-premium/scripts/postinstall.js >/dev/null 2>&1
+          node node_modules/rxdb-premium/scripts/installer.js >/dev/null 2>&1
+          npx expo prebuild --platform android --no-install
+          mkdir -p /tmp/maestro
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          profile: pixel_6
+          script: |
+            pnpm --dir example exec expo start --dev-client > /tmp/metro.log 2>&1 &
+            adb reverse tcp:8081 tcp:8081
+            pnpm --dir example exec expo run:android --no-install --no-bundler
+            maestro test example/.maestro/benchmark.yaml --format junit --output /tmp/maestro/benchmark.xml --debug-output /tmp/maestro/benchmark
+            node example/scripts/collect-results.mjs /tmp/metro.log android
+            maestro test example/.maestro/conformance-smoke.yaml --format junit --output /tmp/maestro/conformance.xml --debug-output /tmp/maestro/conformance
+      - if: always() && env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e
+          path: |
+            benchmarks/
+            /tmp/maestro/
+            /tmp/metro.log

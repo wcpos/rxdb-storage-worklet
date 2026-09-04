@@ -30,6 +30,48 @@ function arrayBuffer(view: Uint8Array): ArrayBuffer {
   return copy.buffer;
 }
 
+function sha256(input: WorkletBuffer): ArrayBuffer {
+  const source = bytes(input);
+  const data = new Uint8Array(Math.ceil((source.byteLength + 9) / 64) * 64);
+  data.set(source);
+  data[source.byteLength] = 0x80;
+  const view = new DataView(data.buffer);
+  const bits = source.byteLength * 8;
+  view.setUint32(data.byteLength - 8, Math.floor(bits / 0x100000000));
+  view.setUint32(data.byteLength - 4, bits);
+  const primes: number[] = [];
+  for (let candidate = 2; primes.length < 64; candidate++) {
+    if (!primes.some((prime) => candidate % prime === 0)) primes.push(candidate);
+  }
+  const constants = primes.map((prime) => ((Math.cbrt(prime) % 1) * 0x100000000) | 0);
+  const hash = primes.slice(0, 8).map((prime) => ((Math.sqrt(prime) % 1) * 0x100000000) | 0);
+  const rotate = (value: number, amount: number) => (value >>> amount) | (value << (32 - amount));
+  for (let offset = 0; offset < data.byteLength; offset += 64) {
+    const words = Array.from({ length: 64 }, (_, index) => index < 16 ? view.getInt32(offset + index * 4) : 0);
+    for (let index = 16; index < 64; index++) {
+      const x = words[index - 15]!;
+      const y = words[index - 2]!;
+      const s0 = rotate(x, 7) ^ rotate(x, 18) ^ (x >>> 3);
+      const s1 = rotate(y, 17) ^ rotate(y, 19) ^ (y >>> 10);
+      words[index] = (words[index - 16]! + s0 + words[index - 7]! + s1) | 0;
+    }
+    let a = hash[0]!, b = hash[1]!, c = hash[2]!, d = hash[3]!;
+    let e = hash[4]!, f = hash[5]!, g = hash[6]!, h = hash[7]!;
+    for (let index = 0; index < 64; index++) {
+      const sum1 = rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25);
+      const choice = (e & f) ^ (~e & g);
+      const temp1 = (h + sum1 + choice + constants[index]! + words[index]!) | 0;
+      const sum0 = rotate(a, 2) ^ rotate(a, 13) ^ rotate(a, 22);
+      const majority = (a & b) ^ (a & c) ^ (b & c);
+      h = g; g = f; f = e; e = (d + temp1) | 0; d = c; c = b; b = a; a = (temp1 + sum0 + majority) | 0;
+    }
+    [a, b, c, d, e, f, g, h].forEach((value, index) => { hash[index] = (hash[index]! + value) | 0; });
+  }
+  const output = new ArrayBuffer(32);
+  hash.forEach((value, index) => new DataView(output).setInt32(index * 4, value));
+  return output;
+}
+
 export class WorkletFileSystemSyncAccessHandle {
   private closed = false;
   private cursor = 0;
@@ -175,6 +217,36 @@ export function createWorkletOpfs(options: { fs?: WorkletFs; rootDirectory?: str
 
 export function installWorkletRuntimePolyfills({ fs }: { fs: WorkletFs }): string[] {
   const installed: string[] = [];
+  if (typeof globalThis.Blob === 'undefined' || typeof globalThis.Blob.prototype.arrayBuffer !== 'function') {
+    class WorkletBlob {
+      readonly type: string;
+      private readonly data: Uint8Array;
+      constructor(parts: (WorkletBuffer | string)[] = [], options: { type?: string } = {}) {
+        const chunks = parts.map((part) => typeof part === 'string'
+          ? new Uint8Array(fs.utf8Encode(part))
+          : bytes(part));
+        this.data = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.byteLength, 0));
+        let offset = 0;
+        for (const chunk of chunks) {
+          this.data.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
+        this.type = options.type ?? '';
+      }
+      get size(): number {
+        return this.data.byteLength;
+      }
+      async arrayBuffer(): Promise<ArrayBuffer> {
+        return arrayBuffer(this.data);
+      }
+      async text(): Promise<string> {
+        const data = arrayBuffer(this.data);
+        return fs.utf8Decode(data, 0, data.byteLength);
+      }
+    }
+    Object.defineProperty(globalThis, 'Blob', { configurable: true, writable: true, value: WorkletBlob });
+    installed.push('Blob');
+  }
   if (typeof globalThis.DOMException === 'undefined') {
     class WorkletDOMException extends Error {
       constructor(message = '', name = 'DOMException') {
@@ -205,6 +277,18 @@ export function installWorkletRuntimePolyfills({ fs }: { fs: WorkletFs }): strin
     }
     Object.defineProperty(globalThis, 'TextDecoder', { configurable: true, writable: true, value: WorkletTextDecoder });
     installed.push('TextDecoder');
+  }
+  if (typeof globalThis.crypto?.subtle?.digest !== 'function') {
+    const subtle = {
+      async digest(algorithm: string | { name: string }, input: WorkletBuffer): Promise<ArrayBuffer> {
+        if ((typeof algorithm === 'string' ? algorithm : algorithm.name).toUpperCase() !== 'SHA-256') {
+          throw new Error('Only SHA-256 is supported in the worklet runtime.');
+        }
+        return sha256(input);
+      },
+    };
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, writable: true, value: { subtle } });
+    installed.push('crypto');
   }
   return installed;
 }

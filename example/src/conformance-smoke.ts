@@ -1,0 +1,168 @@
+import {
+  createBlob,
+  defaultHashSha256,
+  fillWithDefaultSettings,
+  now,
+  prepareQuery,
+  stripAttachmentsDataFromDocument,
+  type RxDocumentData,
+  type RxStorageInstance,
+} from 'rxdb/plugins/core';
+import * as schemas from 'rxdb/plugins/test-utils';
+import { createWorkletStorage } from './storage-runtime';
+
+type Human = { passportId: string; firstName: string; lastName: string; age?: number };
+type Document = RxDocumentData<Human>;
+export type ConformanceResult = { name: string; pass: boolean; detail: string };
+
+const schema = fillWithDefaultSettings({ ...schemas.human, attachments: {} } as typeof schemas.human);
+const databaseName = `conformance-smoke-${Date.now()}`;
+
+function document(passportId: string, firstName: string, lastName: string, revision: string): Document {
+  return {
+    passportId,
+    firstName,
+    lastName,
+    age: 30,
+    _attachments: {},
+    _deleted: false,
+    _meta: { lwt: now() },
+    _rev: revision,
+  };
+}
+
+function check(value: unknown, detail: string): asserts value {
+  if (!value) throw new Error(detail);
+}
+
+function readBlob(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+async function open(): Promise<RxStorageInstance<Human, any, any, any>> {
+  const storage = await createWorkletStorage('worklet-filesystem');
+  return storage.createStorageInstance({
+    databaseInstanceToken: `smoke-${Date.now()}`,
+    databaseName,
+    collectionName: 'humans',
+    schema,
+    options: {},
+    multiInstance: false,
+    devMode: true,
+  });
+}
+
+export async function runConformanceSmoke(onResult?: (result: ConformanceResult) => void) {
+  const results: ConformanceResult[] = [];
+  const scenario = async (name: string, test: () => Promise<string>) => {
+    try {
+      const result = { name, pass: true, detail: await test() };
+      console.log(`CONFORMANCE ${name} PASS ${result.detail}`);
+      results.push(result);
+      onResult?.(result);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      const result = { name, pass: false, detail };
+      console.error(`CONFORMANCE ${name} FAIL ${detail}`);
+      results.push(result);
+      onResult?.(result);
+    }
+  };
+
+  let instance = await open();
+  const changes: any[] = [];
+  const subscription = instance.changeStream().subscribe((event) => changes.push(event));
+  let inserted!: Document;
+  let updated!: Document;
+  let deleted!: Document;
+  let alpha!: Document;
+  let zulu!: Document;
+
+  await scenario('bulk-write', async () => {
+    inserted = document('deleted', 'Deleted', 'Record', '1-insert');
+    check(!(await instance.bulkWrite([{ document: inserted }], 'smoke-insert')).error.length, 'insert failed');
+    const mismatch = { ...inserted, _rev: '1-mismatch' };
+    const conflict = await instance.bulkWrite([{ previous: mismatch, document: { ...inserted, _rev: '2-conflict' } }], 'smoke-conflict');
+    check(conflict.error[0]?.status === 409, '_rev mismatch was not reported as a 409 conflict');
+    updated = { ...inserted, firstName: 'Updated', _rev: '2-update', _meta: { lwt: now() } };
+    check(!(await instance.bulkWrite([{ previous: inserted, document: updated }], 'smoke-update')).error.length, 'update failed');
+    deleted = { ...updated, _deleted: true, _rev: '3-delete', _meta: { lwt: now() } };
+    check(!(await instance.bulkWrite([{ previous: updated, document: deleted }], 'smoke-delete')).error.length, 'delete failed');
+    return 'insert/update/delete and conflict 409';
+  });
+
+  await scenario('query-sort', async () => {
+    alpha = document('alpha', 'Charlie', 'Alpha', '1-alpha');
+    zulu = document('zulu', 'Alice', 'Zulu', '1-zulu');
+    check(!(await instance.bulkWrite([{ document: alpha }, { document: zulu }], 'smoke-seed')).error.length, 'query seed failed');
+    const selector = { _deleted: { $eq: false } };
+    const indexed = await instance.query(prepareQuery(schema, { selector, sort: [{ firstName: 'asc' }], skip: 0 }));
+    const unindexed = await instance.query(prepareQuery(schema, { selector, sort: [{ lastName: 'asc' }], skip: 0 }));
+    const indexedIds = indexed.documents.map((item) => item.passportId).join();
+    const unindexedIds = unindexed.documents.map((item) => item.passportId).join();
+    check(indexedIds === 'zulu,alpha', `indexed sort order was ${indexedIds}`);
+    check(unindexedIds === 'alpha,zulu', `non-index sort order was ${unindexedIds}`);
+    return 'indexed and non-indexed sort';
+  });
+
+  await scenario('count', async () => {
+    const result = await instance.count(prepareQuery(schema, { selector: { _deleted: { $eq: false } }, sort: [{ passportId: 'asc' }], skip: 0 }));
+    check(result.count === 2, `expected 2 active documents, got ${result.count}`);
+    return '2 active documents';
+  });
+
+  await scenario('find-by-id', async () => {
+    const active = await instance.findDocumentsById(['deleted', 'alpha'], false);
+    const withDeleted = await instance.findDocumentsById(['deleted', 'alpha'], true);
+    check(active.length === 1 && active[0].passportId === 'alpha', 'without-deleted result was wrong');
+    check(withDeleted.length === 2 && withDeleted.some((item) => item._deleted), 'with-deleted result was wrong');
+    return 'with and without deleted';
+  });
+
+  await scenario('change-stream', async () => {
+    const events = changes.slice(0, 3);
+    check(events.flatMap((bulk) => bulk.events.map((event: any) => event.operation)).join() === 'INSERT,UPDATE,DELETE', 'event ordering was wrong');
+    check(events[2]?.checkpoint?.id === 'deleted' && events[2].checkpoint.lwt === deleted._meta.lwt, 'final checkpoint was wrong');
+    return 'INSERT → UPDATE → DELETE with checkpoint';
+  });
+
+  await scenario('attachments', async () => {
+    const blob = createBlob('x'.repeat(32 * 1024), 'application/octet-stream');
+    const digest = await defaultHashSha256('x'.repeat(32 * 1024));
+    const withAttachment = { ...alpha, _rev: '2-alpha', _meta: { lwt: now() }, _attachments: { blob: { data: blob, digest, length: blob.size, type: blob.type } } };
+    check(!(await instance.bulkWrite([{ previous: alpha, document: withAttachment }], 'smoke-attachment-write')).error.length, 'attachment write failed');
+    const read = await instance.getAttachmentData('alpha', 'blob', digest);
+    check((await readBlob(read)) === 'x'.repeat(32 * 1024), '32 KB attachment content differed');
+    const withoutAttachment = { ...withAttachment, _rev: '3-alpha', _meta: { lwt: now() }, _attachments: {} };
+    check(!(await instance.bulkWrite([{ previous: await stripAttachmentsDataFromDocument(withAttachment), document: withoutAttachment }], 'smoke-attachment-remove')).error.length, 'attachment remove failed');
+    let removed = false;
+    try { await instance.getAttachmentData('alpha', 'blob', digest); } catch { removed = true; }
+    check(removed, 'removed attachment was still readable');
+    alpha = withoutAttachment;
+    return '32 KB write/read/remove';
+  });
+
+  await scenario('cleanup', async () => {
+    await instance.cleanup(0);
+    check(!(await instance.findDocumentsById(['deleted'], true)).length, 'deleted document survived cleanup');
+    return 'deleted document removed';
+  });
+
+  await scenario('close-reopen', async () => {
+    subscription.unsubscribe();
+    await instance.close();
+    instance = await open();
+    const persisted = await instance.findDocumentsById(['alpha', 'zulu'], false);
+    check(persisted.length === 2, `expected 2 persisted documents, got ${persisted.length}`);
+    return '2 documents persisted';
+  });
+
+  try { await instance.remove(); } catch { await instance.close(); }
+  return results;
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "platform": "ios",
+    "device": "iPhone 16",
+    "date": "2026-09-04",
+    "modes": {
+      "js-filesystem": {
+        "steps": { "bulkInsert500Ms": 40, "tenQueriesMs": 20, "reactiveInsert200Ms": 12 },
+        "lag": { "maxLagMs": 32, "totalBlockedMs": 80, "series": [1, 20, 4] }
+      },
+      "worklet-filesystem": {
+        "steps": { "bulkInsert500Ms": 60, "tenQueriesMs": 10, "reactiveInsert200Ms": 24 },
+        "lag": { "maxLagMs": 8, "totalBlockedMs": 20, "series": [1, 3, 2] }
+      }
+    }
+  },
+  {
+    "platform": "android",
+    "device": "Pixel 9",
+    "date": "2026-09-04",
+    "modes": {
+      "js-filesystem": {
+        "steps": { "bulkInsert500Ms": 30, "tenQueriesMs": 18, "reactiveInsert200Ms": 10 },
+        "lag": { "maxLagMs": 25, "totalBlockedMs": 70, "series": [2, 18, 5] }
+      },
+      "worklet-filesystem": {
+        "steps": { "bulkInsert500Ms": 55, "tenQueriesMs": 12, "reactiveInsert200Ms": 20 },
+        "lag": { "maxLagMs": 7, "totalBlockedMs": 18, "series": [1, 2, 3] }
+      }
+    }
+  }
+]

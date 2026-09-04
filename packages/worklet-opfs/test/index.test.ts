@@ -81,22 +81,34 @@ describe('worklet OPFS', () => {
     await access.close();
   });
 
-  it('installs UTF-8 polyfills only when absent', () => {
+  it('installs runtime polyfills only when absent', async () => {
+    const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
     const original = {
+      Blob: globalThis.Blob,
       DOMException: globalThis.DOMException,
       TextDecoder: globalThis.TextDecoder,
       TextEncoder: globalThis.TextEncoder,
     };
     try {
-      Object.assign(globalThis, { DOMException: undefined, TextDecoder: undefined, TextEncoder: undefined });
-      expect(installWorkletRuntimePolyfills({ fs }).sort()).toEqual(['DOMException', 'TextDecoder', 'TextEncoder']);
+      Object.assign(globalThis, { Blob: undefined, DOMException: undefined, TextDecoder: undefined, TextEncoder: undefined });
+      Object.defineProperty(globalThis, 'crypto', { configurable: true, writable: true, value: undefined });
+      expect(installWorkletRuntimePolyfills({ fs }).sort()).toEqual(['Blob', 'crypto', 'DOMException', 'TextDecoder', 'TextEncoder'].sort());
       expect(installWorkletRuntimePolyfills({ fs })).toEqual([]);
       const text = '€🪽';
       const bytes = new TextEncoder().encode(text);
       expect([...bytes]).toEqual([226, 130, 172, 240, 159, 170, 189]);
       expect(new TextDecoder().decode(bytes)).toBe(text);
+      const blob = new Blob([bytes], { type: 'application/octet-stream' });
+      expect(blob.size).toBe(bytes.byteLength);
+      expect(blob.type).toBe('application/octet-stream');
+      expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([...bytes]);
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('abc'));
+      expect([...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('')).toBe(
+        'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+      );
     } finally {
       Object.assign(globalThis, original);
+      if (cryptoDescriptor) Object.defineProperty(globalThis, 'crypto', cryptoDescriptor);
     }
   });
 

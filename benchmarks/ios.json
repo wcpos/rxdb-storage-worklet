@@ -1,5 +1,7 @@
 {
   "platform": "ios",
+  "device": "iPhone simulator",
+  "date": "2026-09-04",
   "modes": {
     "js-filesystem": {
       "medianSample": 2,
