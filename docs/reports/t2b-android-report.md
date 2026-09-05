@@ -1,3 +1,5 @@
+*Historical snapshot as of 2026-09-05; later commits changed this state—see [t6a-fixes.md](t6a-fixes.md) and [t6b-honest-benchmarks.md](t6b-honest-benchmarks.md). The Android packaging omission was fixed in e8153aa.*
+
 ## Build — **PASS** (Observed)
 
 - `Pixel_Tablet_API_35` was already running; boot verified and emulator left running.

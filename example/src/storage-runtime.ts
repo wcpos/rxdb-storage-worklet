@@ -67,6 +67,9 @@ function prepareRuntime(mode: WorkletMode): Promise<WorkletRuntime> {
     scheduleOnRuntime(runtime, exposeStorage, mode, rootDirectory, (error?: string) => {
       if (error) reject(new Error(error)); else resolve(runtime);
     }, receiveWorkletMessage);
+  }).catch(error => {
+    delete initialized[mode];
+    throw error;
   });
 }
 

@@ -1,7 +1,7 @@
 # benchmarks/render-charts.mjs — spec (Claude-owned design; implemented in T3)
 
 Input: `benchmarks/ios.json`, `benchmarks/android.json` (from `example/scripts/collect-results.mjs`):
-```
+```json
 { platform, device, date, rxdb, worklets, modes: { [mode]: { medians: { steps: {...}, rnSendMs, lag: { totalBlockedMs, maxLagMs, ticksOver50Ms } }, series: number[] /* per-tick lag ms of the median sample */ } } }
 ```
 Modes: `js-filesystem` (today's app: expo-opfs on the JS thread), `worklet-filesystem` (this library), `js-memory`, `worklet-memory`.

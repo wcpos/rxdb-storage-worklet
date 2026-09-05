@@ -1,5 +1,4 @@
 import {
-  createBlob,
   defaultHashSha256,
   fillWithDefaultSettings,
   now,
@@ -35,13 +34,13 @@ function check(value: unknown, detail: string): asserts value {
   if (!value) throw new Error(detail);
 }
 
-function readBlob(blob: Blob): Promise<string> {
-  if (typeof blob.text === 'function') return blob.text();
+function readBlob(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
     reader.onerror = () => reject(reader.error);
-    reader.readAsText(blob);
+    reader.readAsArrayBuffer(blob);
   });
 }
 
@@ -141,12 +140,16 @@ export async function runConformanceSmoke(onResult?: (result: ConformanceResult)
   });
 
   await scenario('attachments', async () => {
-    const blob = createBlob('x'.repeat(32 * 1024), 'application/octet-stream');
-    const digest = await defaultHashSha256('x'.repeat(32 * 1024));
+    const pattern = [0x00, 0x80, 0xFF, 0xE2, 0x82, 0xAC]; // arbitrary bytes and UTF-8 €
+    const bytes = Uint8Array.from({ length: 32 * 1024 }, (_, index) => pattern[index % pattern.length]);
+    const blob = new Blob([bytes], { type: 'application/octet-stream' });
+    const digest = await defaultHashSha256(bytes.buffer);
     const withAttachment = { ...alpha, _rev: '2-alpha', _meta: { lwt: now() }, _attachments: { blob: { data: blob, digest, length: blob.size, type: blob.type } } };
     check(!(await instance.bulkWrite([{ previous: alpha, document: withAttachment }], 'smoke-attachment-write')).error.length, 'attachment write failed');
     const read = await instance.getAttachmentData('alpha', 'blob', digest);
-    check((await readBlob(read)) === 'x'.repeat(32 * 1024), '32 KB attachment content differed');
+    const readBytes = new Uint8Array(await readBlob(read));
+    check(read.type === blob.type, 'attachment type differed');
+    check(readBytes.length === bytes.length && readBytes.every((byte, index) => byte === bytes[index]), '32 KB binary attachment content differed');
     const withoutAttachment = { ...withAttachment, _rev: '3-alpha', _meta: { lwt: now() }, _attachments: {} };
     check(!(await instance.bulkWrite([{ previous: await stripAttachmentsDataFromDocument(withAttachment), document: withoutAttachment }], 'smoke-attachment-remove')).error.length, 'attachment remove failed');
     let removed = false;

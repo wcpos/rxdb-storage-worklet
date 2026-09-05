@@ -65,7 +65,7 @@ All numbers: iPhone 16 Pro simulator (iOS 18.6) and Pixel Tablet API 35 emulator
 
 ## How it works
 
-```
+```text
 React Native JS thread                      Worker Runtime (react-native-worklets)
 ┌──────────────────────────┐   JSON string   ┌────────────────────────────────────┐
 │ RxDB core                │  per message    │ exposeWorkletRxStorage             │
@@ -147,7 +147,7 @@ export const storage = getRxStorageWorklet({ runtime, identifier: 'app' }); // -
 
 ## Testing
 
-Every layer has its own proof, and the RxDB suite is the one that counts. All of it runs in CI on every push.
+Every layer has its own proof, and the RxDB suite is the one that counts. CI runs all four jobs on every push: unit tests, RxDB conformance, iOS simulator smoke, and Android emulator smoke (the latter three require `RXDB_PREMIUM`). Hosted benchmarks are opt-in via `workflow_dispatch` with `benchmark=true`.
 
 | Level | What runs | Command |
 |---|---|---|

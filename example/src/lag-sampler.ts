@@ -6,6 +6,9 @@ export function lagSampler() {
   const samples: { scheduledMs: number; observedMs: number; lagMs: number; materialised: boolean; source: 'timer' | 'stop' }[] = [];
   let expected = startMs + samplerIntervalMs;
   const record = (actual: number, source: 'timer' | 'stop') => {
+    if (source === 'stop' && actual < expected) {
+      samples.push({ scheduledMs: expected, observedMs: actual, lagMs: 0, materialised: false, source });
+    }
     let materialised = false;
     while (actual >= expected) {
       samples.push({ scheduledMs: expected, observedMs: actual, lagMs: actual - expected, materialised, source });

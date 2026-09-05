@@ -13,11 +13,16 @@ on:
 # Once this trigger is on the default branch, maintainers can opt in:
 # gh workflow run ci.yml --ref <branch> -f benchmark=true
 
+permissions:
+  contents: read
+
 jobs:
   unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -26,6 +31,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter './packages/**' -r typecheck
       - run: pnpm --workspace-concurrency=1 --filter './packages/**' -r test
+      - run: pnpm --filter './packages/**' -r build
+      - run: pnpm exec vitest run benchmarks --minWorkers=1 --maxWorkers=2
 
   conformance:
     runs-on: ubuntu-latest
@@ -34,6 +41,8 @@ jobs:
     steps:
       - if: env.HAS_RXDB_PREMIUM == 'true'
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - if: env.HAS_RXDB_PREMIUM == 'true'
         uses: pnpm/action-setup@v4
       - if: env.HAS_RXDB_PREMIUM == 'true'
@@ -70,6 +79,8 @@ jobs:
     steps:
       - if: env.HAS_RXDB_PREMIUM == 'true'
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - if: env.HAS_RXDB_PREMIUM == 'true'
         uses: pnpm/action-setup@v4
       - if: env.HAS_RXDB_PREMIUM == 'true'
@@ -79,6 +90,15 @@ jobs:
           cache: pnpm
       - if: env.HAS_RXDB_PREMIUM == 'true'
         run: pnpm install --frozen-lockfile
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        name: Install pinned Maestro before provisioning premium
+        run: |
+          # SHA-256 computed from the cli-2.10.0 maestro.zip release asset on 2026-09-05.
+          curl --fail -L https://github.com/mobile-dev-inc/maestro/releases/download/cli-2.10.0/maestro.zip -o "$RUNNER_TEMP/maestro.zip"
+          echo "29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991  $RUNNER_TEMP/maestro.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"
+          echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
+          mkdir -p /tmp/maestro
       - if: env.HAS_RXDB_PREMIUM == 'true'
         working-directory: example
         env:
@@ -101,11 +121,6 @@ jobs:
       - if: env.HAS_RXDB_PREMIUM == 'true'
         working-directory: example/ios
         run: pod install
-      - if: env.HAS_RXDB_PREMIUM == 'true'
-        run: |
-          mkdir -p /tmp/maestro
-          curl -Ls https://get.maestro.mobile.dev | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       - if: env.HAS_RXDB_PREMIUM == 'true'
         working-directory: example
         run: |
@@ -147,6 +162,8 @@ jobs:
     steps:
       - if: env.HAS_RXDB_PREMIUM == 'true'
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - if: env.HAS_RXDB_PREMIUM == 'true'
         uses: pnpm/action-setup@v4
       - if: env.HAS_RXDB_PREMIUM == 'true'
@@ -156,6 +173,15 @@ jobs:
           cache: pnpm
       - if: env.HAS_RXDB_PREMIUM == 'true'
         run: pnpm install --frozen-lockfile
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        name: Install pinned Maestro before provisioning premium
+        run: |
+          # SHA-256 computed from the cli-2.10.0 maestro.zip release asset on 2026-09-05.
+          curl --fail -L https://github.com/mobile-dev-inc/maestro/releases/download/cli-2.10.0/maestro.zip -o "$RUNNER_TEMP/maestro.zip"
+          echo "29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991  $RUNNER_TEMP/maestro.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"
+          echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
+          mkdir -p /tmp/maestro
       - if: env.HAS_RXDB_PREMIUM == 'true'
         working-directory: example
         env:
@@ -168,9 +194,6 @@ jobs:
           node node_modules/rxdb-premium/scripts/installer.js 2>&1 | sed -e '/^accessToken: /d' -e '/access-tokens\/0x/d'
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
           npx expo prebuild --platform android --no-install
-          mkdir -p /tmp/maestro
-          curl -Ls https://get.maestro.mobile.dev | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       - if: env.HAS_RXDB_PREMIUM == 'true'
         name: Build Android simulator APK before starting the emulator
         working-directory: example/android
@@ -190,6 +213,8 @@ jobs:
           key: avd-${{ runner.os }}-35-google_apis-x86_64-pixel_6
       - if: env.HAS_RXDB_PREMIUM == 'true'
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          BENCH_DEVICE: pixel_6 API 35 x86_64 emulator
         with:
           api-level: 35
           arch: x86_64

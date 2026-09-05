@@ -419,7 +419,8 @@ export async function runBenchmarkSample(
 }
 
 function median(values: number[]): number {
-  return [...values].sort((left, right) => left - right)[1];
+  if (!values.length) throw new Error('Cannot calculate median without samples');
+  return [...values].sort((left, right) => left - right)[Math.floor(values.length / 2)];
 }
 
 function elapsed(result: StandardBenchmarkResult): number {
@@ -427,11 +428,12 @@ function elapsed(result: StandardBenchmarkResult): number {
 }
 
 export function medianResult(samples: BenchmarkResult[]): BenchmarkMedian {
+  if (!samples.length) throw new Error('Cannot calculate median without samples');
   if (samples[0]?.mode.startsWith('sustained-')) {
     const sustained = samples as SustainedBenchmarkResult[];
     const medianSample = [...sustained].sort(
       (left, right) => left.lag.p95LagMs - right.lag.p95LagMs,
-    )[1];
+    )[Math.floor(sustained.length / 2)];
     return {
       ...medianSample,
       platform: medianSample.platform,
@@ -453,7 +455,7 @@ export function medianResult(samples: BenchmarkResult[]): BenchmarkMedian {
     };
   }
   const standard = samples as StandardBenchmarkResult[];
-  const medianSample = [...standard].sort((left, right) => elapsed(left) - elapsed(right))[1];
+  const medianSample = [...standard].sort((left, right) => elapsed(left) - elapsed(right))[Math.floor(standard.length / 2)];
   return {
     ...medianSample,
     platform: medianSample.platform,

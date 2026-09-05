@@ -1,3 +1,5 @@
+*Historical snapshot as of 2026-09-05; later commits changed this state—see [t6a-fixes.md](t6a-fixes.md) and [t6b-honest-benchmarks.md](t6b-honest-benchmarks.md).*
+
 **Observed** denotes read-only probes; **Inferred** denotes source tracing. Native builds and hosted CI were not rerun.
 
 1. **[blocker] Short writes are acknowledged as complete.**  

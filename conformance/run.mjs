@@ -67,6 +67,7 @@ function runSuite(backend) {
     cwd: checkout,
     env: { ...process.env, DEFAULT_STORAGE: 'worklet-opfs', WORKLET_STORAGE_BACKEND: backend },
     encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
   });
   const jsonStart = result.stdout.lastIndexOf('{\n  "stats":');
   if (jsonStart < 0) throw new Error(`Mocha did not produce JSON results for ${backend}: ${result.stderr}`);

@@ -24,6 +24,8 @@ const results = input
 
 if (!results.length) throw new Error('No BENCH_RESULT lines found.');
 const platform = platformArgument ?? results[0].platform;
+const device = process.env.BENCH_DEVICE ?? (platform === 'ios' ? 'iPhone simulator' : undefined);
+if (!device) throw new Error('BENCH_DEVICE is required for Android results.');
 const platformResults = results.filter((result) => result.platform === platform);
 const modes = new Map();
 for (const result of platformResults) {
@@ -114,9 +116,7 @@ await writeFile(
     timingSummary: 'Median of three per-run request medians; raw matching request timings retained. RN stringify only; dispatch call only; round trip starts before serialization and ends at matching reply entry.',
     lagScope: 'Short: setup through persistence. Sustained: loop only. Terminal stop observations included; synthetic ticks marked. totalBlockedMs sums real lateness, not overlapping synthetic delays.',
     replacesIncompleteWorkload: true,
-    device: platform === 'ios'
-      ? 'iPhone simulator'
-      : 'Pixel Tablet API 35 emulator',
+    device,
     date: new Date().toISOString().slice(0, 10),
     modes: modeOutput,
   }, null, 2)}\n`,

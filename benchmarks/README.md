@@ -55,11 +55,14 @@ Android; disable any emulator auto-restart job during iOS measurement. Run smoke
 first (exactly eight scenarios, ALL PASS), then all six modes, three samples each:
 
 ```sh
+# Terminal 1 (keep Metro running):
 npx expo start --dev-client 2>&1 | tee /tmp/rxdb-benchmark.log
+# Terminal 2, also in example/:
 ~/.maestro/bin/maestro test .maestro/conformance-smoke.yaml
 ~/.maestro/bin/maestro test .maestro/benchmark.yaml
 node scripts/collect-results.mjs /tmp/rxdb-benchmark.log ios
-# use `android` instead of `ios` for the Android run
+# Android: pass the device used for this run, for example:
+# BENCH_DEVICE="Pixel Tablet API 35 emulator" node scripts/collect-results.mjs /tmp/rxdb-benchmark.log android
 ```
 
 Record the device and date in the generated platform JSON, then regenerate the static charts and Markdown tables:
