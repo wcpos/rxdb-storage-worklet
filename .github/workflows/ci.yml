@@ -93,7 +93,7 @@ jobs:
       - if: env.HAS_RXDB_PREMIUM == 'true'
         name: Install pinned Maestro before provisioning premium
         run: |
-          # SHA-256 computed from the cli-2.10.0 maestro.zip release asset on 2026-09-05.
+          # cli-2.10.0 maestro.zip SHA-256, computed on 2026-09-05: 29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991
           curl --fail -L https://github.com/mobile-dev-inc/maestro/releases/download/cli-2.10.0/maestro.zip -o "$RUNNER_TEMP/maestro.zip"
           echo "29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991  $RUNNER_TEMP/maestro.zip" | shasum -a 256 -c -
           unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"
@@ -176,7 +176,7 @@ jobs:
       - if: env.HAS_RXDB_PREMIUM == 'true'
         name: Install pinned Maestro before provisioning premium
         run: |
-          # SHA-256 computed from the cli-2.10.0 maestro.zip release asset on 2026-09-05.
+          # cli-2.10.0 maestro.zip SHA-256, computed on 2026-09-05: 29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991
           curl --fail -L https://github.com/mobile-dev-inc/maestro/releases/download/cli-2.10.0/maestro.zip -o "$RUNNER_TEMP/maestro.zip"
           echo "29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991  $RUNNER_TEMP/maestro.zip" | shasum -a 256 -c -
           unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"

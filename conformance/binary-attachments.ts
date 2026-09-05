@@ -21,6 +21,8 @@ describe('worklet public channel', () => {
         assert.deepEqual((await instance.bulkWrite([{ document }], 'binary')).error, []);
         const read = await instance.getAttachmentData('binary', 'binary', 'binary-digest');
         assert.deepEqual(new Uint8Array(await read.arrayBuffer()), bytes);
+        const [stored] = await instance.findDocumentsById(['binary'], false);
+        assert.equal(stored._attachments.binary.type, blob.type);
       } finally { await instance.remove(); }
     } finally { globalThis.fetch = original; }
   });
