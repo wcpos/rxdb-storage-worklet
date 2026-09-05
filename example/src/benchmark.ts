@@ -18,17 +18,25 @@ import {
   resetRnSendMs,
 } from './storage-runtime';
 
-export type Mode =
+export type StandardMode =
   | 'js-filesystem'
   | 'js-memory'
   | 'worklet-filesystem'
   | 'worklet-memory';
+
+export type SustainedMode =
+  | 'sustained-js-filesystem'
+  | 'sustained-worklet-filesystem';
+
+export type Mode = StandardMode | SustainedMode;
 
 export const MODE_LABELS: Record<Mode, string> = {
   'js-filesystem': 'JS thread / filesystem (expo-opfs)',
   'js-memory': 'JS thread / memory',
   'worklet-filesystem': 'worklet / filesystem',
   'worklet-memory': 'worklet / memory',
+  'sustained-js-filesystem': 'sustained · JS thread / filesystem',
+  'sustained-worklet-filesystem': 'sustained · worklet / filesystem',
 };
 
 type Product = {
@@ -49,9 +57,9 @@ export type Steps = {
   reactiveInsert200Ms: number;
 };
 
-export type BenchmarkResult = {
+type StandardBenchmarkResult = {
   platform: string;
-  mode: Mode;
+  mode: StandardMode;
   sample: number;
   steps: Steps;
   rnSendMs: number;
@@ -64,9 +72,27 @@ export type BenchmarkResult = {
   persistence: { expected: 50; actual: number; pass: boolean };
 };
 
-export type BenchmarkMedian = Omit<BenchmarkResult, 'sample'> & {
-  medianSample: number;
+type SustainedBenchmarkResult = {
+  platform: string;
+  mode: SustainedMode;
+  sample: number;
+  iterations: number;
+  documentsWritten: number;
+  lag: {
+    p50LagMs: number;
+    p95LagMs: number;
+    maxLagMs: number;
+    ticksOver16Ms: number;
+    ticksOver50Ms: number;
+    series: number[];
+  };
 };
+
+export type BenchmarkResult = StandardBenchmarkResult | SustainedBenchmarkResult;
+
+export type BenchmarkMedian =
+  | (Omit<StandardBenchmarkResult, 'sample'> & { medianSample: number })
+  | (Omit<SustainedBenchmarkResult, 'sample'> & { medianSample: number });
 
 const schema: RxJsonSchema<Product> = {
   title: 'product',
@@ -152,9 +178,13 @@ function jsFilesystemStorage() {
 }
 
 async function storageFor(mode: Mode): Promise<RxStorage<any, any>> {
-  if (mode === 'js-filesystem') return jsFilesystemStorage();
+  if (mode === 'js-filesystem' || mode === 'sustained-js-filesystem') {
+    return jsFilesystemStorage();
+  }
   if (mode === 'js-memory') return getRxStorageMemory();
-  return createWorkletStorage(mode);
+  return createWorkletStorage(
+    mode === 'sustained-worklet-filesystem' ? 'worklet-filesystem' : mode,
+  );
 }
 
 async function database(
@@ -170,18 +200,22 @@ async function database(
   return { db, collection: collections.products as RxCollection<Product> };
 }
 
-function lagSampler() {
+function lagSampler(intervalMs = 50, recordEveryTick = false) {
   const series: number[] = [];
-  let expected = performance.now() + 50;
-  const timer = setInterval(() => {
-    const actual = performance.now();
-    series.push(Math.max(0, actual - expected));
-    expected = actual + 50;
-  }, 50);
+  let expected = performance.now() + intervalMs;
+  const record = (actual: number) => {
+    do {
+      series.push(Math.max(0, actual - expected));
+      expected += intervalMs;
+    } while (recordEveryTick && actual >= expected);
+    if (!recordEveryTick) expected = actual + intervalMs;
+  };
+  const timer = setInterval(() => record(performance.now()), intervalMs);
   return () => {
     clearInterval(timer);
-    const trailingLag = Math.max(0, performance.now() - expected);
-    series.push(trailingLag);
+    if (performance.now() >= expected) {
+      record(performance.now());
+    }
     return {
       totalBlockedMs: series.reduce((sum, lag) => sum + lag, 0),
       maxLagMs: Math.max(0, ...series),
@@ -207,10 +241,72 @@ async function persistenceCheck(mode: Mode, name: string): Promise<number> {
   }
 }
 
+function percentile(values: number[], quantile: number): number {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.max(0, Math.ceil(sorted.length * quantile) - 1)] ?? 0;
+}
+
+async function runSustainedSample(
+  mode: SustainedMode,
+  sample: number,
+): Promise<SustainedBenchmarkResult> {
+  resetRnSendMs();
+  const suffix = `${Date.now()}-${sample}`;
+  const { db, collection } = await database(`bench-${mode}-${suffix}`, mode);
+  const stopLagSampler = lagSampler(16, true);
+  const ids: string[] = [];
+  let iterations = 0;
+  let nextDocument = 0;
+  let sampled: ReturnType<ReturnType<typeof lagSampler>>;
+
+  try {
+    const started = performance.now();
+    while (performance.now() - started < 4_000) {
+      const documents = Array.from({ length: 50 }, () => makeProduct(nextDocument++));
+      await checkedBulkInsert(collection, documents);
+      ids.push(...documents.map(({ id }) => id));
+      await collection
+        .find({ selector: {}, sort: [{ name: 'asc' }], limit: 50 })
+        .exec();
+      await collection.findByIds(
+        Array.from({ length: 50 }, () => ids[Math.floor(Math.random() * ids.length)]),
+      );
+      iterations += 1;
+    }
+    sampled = stopLagSampler();
+  } catch (error) {
+    stopLagSampler();
+    throw error;
+  } finally {
+    await db.close();
+  }
+
+  const result: SustainedBenchmarkResult = {
+    platform: Platform.OS,
+    mode,
+    sample,
+    iterations,
+    documentsWritten: iterations * 50,
+    lag: {
+      p50LagMs: percentile(sampled.series, 0.5),
+      p95LagMs: percentile(sampled.series, 0.95),
+      maxLagMs: sampled.maxLagMs,
+      ticksOver16Ms: sampled.series.filter((lag) => lag > 16).length,
+      ticksOver50Ms: sampled.ticksOver50Ms,
+      series: sampled.series,
+    },
+  };
+  console.log(`BENCH_RESULT ${JSON.stringify(result)}`);
+  return result;
+}
+
 export async function runBenchmarkSample(
   mode: Mode,
   sample: number,
 ): Promise<BenchmarkResult> {
+  if (mode === 'sustained-js-filesystem' || mode === 'sustained-worklet-filesystem') {
+    return runSustainedSample(mode, sample);
+  }
   resetRnSendMs();
   const stopLagSampler = lagSampler();
   const suffix = `${Date.now()}-${sample}`;
@@ -305,33 +401,57 @@ function median(values: number[]): number {
   return [...values].sort((left, right) => left - right)[1];
 }
 
-function elapsed(result: BenchmarkResult): number {
+function elapsed(result: StandardBenchmarkResult): number {
   return Object.values(result.steps).reduce((sum, value) => sum + value, 0);
 }
 
 export function medianResult(samples: BenchmarkResult[]): BenchmarkMedian {
-  const medianSample = [...samples].sort((left, right) => elapsed(left) - elapsed(right))[1];
+  if (samples[0]?.mode.startsWith('sustained-')) {
+    const sustained = samples as SustainedBenchmarkResult[];
+    const medianSample = [...sustained].sort(
+      (left, right) => left.lag.p95LagMs - right.lag.p95LagMs,
+    )[1];
+    return {
+      platform: medianSample.platform,
+      mode: medianSample.mode,
+      medianSample: medianSample.sample,
+      iterations: median(sustained.map(({ iterations }) => iterations)),
+      documentsWritten: median(
+        sustained.map(({ documentsWritten }) => documentsWritten),
+      ),
+      lag: {
+        p50LagMs: median(sustained.map(({ lag }) => lag.p50LagMs)),
+        p95LagMs: median(sustained.map(({ lag }) => lag.p95LagMs)),
+        maxLagMs: median(sustained.map(({ lag }) => lag.maxLagMs)),
+        ticksOver16Ms: median(sustained.map(({ lag }) => lag.ticksOver16Ms)),
+        ticksOver50Ms: median(sustained.map(({ lag }) => lag.ticksOver50Ms)),
+        series: medianSample.lag.series,
+      },
+    };
+  }
+  const standard = samples as StandardBenchmarkResult[];
+  const medianSample = [...standard].sort((left, right) => elapsed(left) - elapsed(right))[1];
   return {
     platform: medianSample.platform,
     mode: medianSample.mode,
     medianSample: medianSample.sample,
     steps: {
-      bulkInsert500Ms: median(samples.map(({ steps }) => steps.bulkInsert500Ms)),
-      tenQueriesMs: median(samples.map(({ steps }) => steps.tenQueriesMs)),
-      findByIds200Ms: median(samples.map(({ steps }) => steps.findByIds200Ms)),
-      reactiveInsert200Ms: median(samples.map(({ steps }) => steps.reactiveInsert200Ms)),
+      bulkInsert500Ms: median(standard.map(({ steps }) => steps.bulkInsert500Ms)),
+      tenQueriesMs: median(standard.map(({ steps }) => steps.tenQueriesMs)),
+      findByIds200Ms: median(standard.map(({ steps }) => steps.findByIds200Ms)),
+      reactiveInsert200Ms: median(standard.map(({ steps }) => steps.reactiveInsert200Ms)),
     },
-    rnSendMs: median(samples.map(({ rnSendMs }) => rnSendMs)),
+    rnSendMs: median(standard.map(({ rnSendMs }) => rnSendMs)),
     lag: {
-      totalBlockedMs: median(samples.map(({ lag }) => lag.totalBlockedMs)),
-      maxLagMs: median(samples.map(({ lag }) => lag.maxLagMs)),
-      ticksOver50Ms: median(samples.map(({ lag }) => lag.ticksOver50Ms)),
+      totalBlockedMs: median(standard.map(({ lag }) => lag.totalBlockedMs)),
+      maxLagMs: median(standard.map(({ lag }) => lag.maxLagMs)),
+      ticksOver50Ms: median(standard.map(({ lag }) => lag.ticksOver50Ms)),
       series: medianSample.lag.series,
     },
     persistence: {
       expected: 50,
-      actual: median(samples.map(({ persistence }) => persistence.actual)),
-      pass: samples.every(({ persistence }) => persistence.pass),
+      actual: median(standard.map(({ persistence }) => persistence.actual)),
+      pass: standard.every(({ persistence }) => persistence.pass),
     },
   };
 }

@@ -11,6 +11,16 @@
       "worklet-filesystem": {
         "steps": { "bulkInsert500Ms": 60, "tenQueriesMs": 10, "reactiveInsert200Ms": 24 },
         "lag": { "maxLagMs": 8, "totalBlockedMs": 20, "series": [1, 3, 2] }
+      },
+      "sustained-js-filesystem": {
+        "iterations": 8,
+        "documentsWritten": 400,
+        "lag": { "p50LagMs": 4, "p95LagMs": 21, "maxLagMs": 29, "ticksOver16Ms": 2, "ticksOver50Ms": 0, "series": [1, 4, 21, 29, 2] }
+      },
+      "sustained-worklet-filesystem": {
+        "iterations": 10,
+        "documentsWritten": 500,
+        "lag": { "p50LagMs": 2, "p95LagMs": 7, "maxLagMs": 9, "ticksOver16Ms": 0, "ticksOver50Ms": 0, "series": [1, 2, 7, 9, 1] }
       }
     }
   },
@@ -26,6 +36,16 @@
       "worklet-filesystem": {
         "steps": { "bulkInsert500Ms": 55, "tenQueriesMs": 12, "reactiveInsert200Ms": 20 },
         "lag": { "maxLagMs": 7, "totalBlockedMs": 18, "series": [1, 2, 3] }
+      },
+      "sustained-js-filesystem": {
+        "iterations": 9,
+        "documentsWritten": 450,
+        "lag": { "p50LagMs": 3, "p95LagMs": 19, "maxLagMs": 28, "ticksOver16Ms": 2, "ticksOver50Ms": 0, "series": [2, 3, 19, 28, 2] }
+      },
+      "sustained-worklet-filesystem": {
+        "iterations": 11,
+        "documentsWritten": 550,
+        "lag": { "p50LagMs": 2, "p95LagMs": 6, "maxLagMs": 8, "ticksOver16Ms": 0, "ticksOver50Ms": 0, "series": [1, 2, 6, 8, 1] }
       }
     }
   }

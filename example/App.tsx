@@ -27,35 +27,46 @@ cryptoGlobal.crypto.subtle ??= { digest: Crypto.digest };
 const MODES = Object.keys(MODE_LABELS) as Mode[];
 
 const metrics: [string, (result: BenchmarkMedian) => number, string][] = [
-  ['Insert 500', ({ steps }) => steps.bulkInsert500Ms, 'ms'],
-  ['10 sorted queries', ({ steps }) => steps.tenQueriesMs, 'ms'],
-  ['Find 200 IDs', ({ steps }) => steps.findByIds200Ms, 'ms'],
-  ['Reactive insert 200', ({ steps }) => steps.reactiveInsert200Ms, 'ms'],
-  ['RN send', ({ rnSendMs }) => rnSendMs, 'ms'],
-  ['Total blocked', ({ lag }) => lag.totalBlockedMs, 'ms'],
+  ['Insert 500', (result) => 'steps' in result ? result.steps.bulkInsert500Ms : 0, 'ms'],
+  ['10 sorted queries', (result) => 'steps' in result ? result.steps.tenQueriesMs : 0, 'ms'],
+  ['Find 200 IDs', (result) => 'steps' in result ? result.steps.findByIds200Ms : 0, 'ms'],
+  ['Reactive insert 200', (result) => 'steps' in result ? result.steps.reactiveInsert200Ms : 0, 'ms'],
+  ['RN send', (result) => 'rnSendMs' in result ? result.rnSendMs : 0, 'ms'],
+  ['Total blocked', (result) => 'totalBlockedMs' in result.lag ? result.lag.totalBlockedMs : 0, 'ms'],
   ['Max lag', ({ lag }) => lag.maxLagMs, 'ms'],
   ['Ticks > 50 ms', ({ lag }) => lag.ticksOver50Ms, ''],
 ];
 
 function ResultCard({ result }: { result: BenchmarkMedian }) {
+  const resultMetrics = 'iterations' in result
+    ? [
+        ['Iterations', result.iterations, ''],
+        ['Documents written', result.documentsWritten, ''],
+        ['Lag p50', result.lag.p50LagMs, 'ms'],
+        ['Lag p95', result.lag.p95LagMs, 'ms'],
+        ['Max lag', result.lag.maxLagMs, 'ms'],
+        ['Ticks > 16 ms', result.lag.ticksOver16Ms, ''],
+        ['Ticks > 50 ms', result.lag.ticksOver50Ms, ''],
+      ] as const
+    : metrics.map(([label, value, unit]) => [label, value(result), unit] as const);
   return (
     <View style={styles.resultCard} testID={`results-${result.mode}`}>
       <View style={styles.resultHeader}>
         <Text style={styles.resultTitle}>{MODE_LABELS[result.mode]}</Text>
-        <Text
-          style={result.persistence.pass ? styles.pass : styles.fail}
-          testID={`persistence-${result.mode}`}
-        >
-          {result.persistence.pass
-            ? `PERSISTED ${result.persistence.actual}/50`
-            : `PERSISTENCE FAILED ${result.persistence.actual}/50`}
-        </Text>
+        {'persistence' in result ? <Text
+            style={result.persistence.pass ? styles.pass : styles.fail}
+            testID={`persistence-${result.mode}`}
+          >
+            {result.persistence.pass
+              ? `PERSISTED ${result.persistence.actual}/50`
+              : `PERSISTENCE FAILED ${result.persistence.actual}/50`}
+          </Text> : null}
       </View>
-      {metrics.map(([label, value, unit]) => (
+      {resultMetrics.map(([label, value, unit]) => (
         <View style={styles.metricRow} key={label}>
           <Text style={styles.metricLabel}>{label}</Text>
           <Text style={styles.metricValue}>
-            {value(result).toFixed(1)}{unit ? ` ${unit}` : ''}
+            {value.toFixed(1)}{unit ? ` ${unit}` : ''}
           </Text>
         </View>
       ))}
@@ -91,6 +102,14 @@ export default function App() {
   const [sample, setSample] = useState(0);
   const [results, setResults] = useState<Partial<Record<Mode, BenchmarkMedian>>>({});
   const [error, setError] = useState('');
+  const [counter, setCounter] = useState(0);
+
+  useEffect(() => {
+    setCounter(0);
+    if (!running?.startsWith('sustained-')) return;
+    const timer = setInterval(() => setCounter((value) => value + 1), 16);
+    return () => clearInterval(timer);
+  }, [running]);
 
   const run = async (mode: Mode) => {
     setRunning(mode);
@@ -139,6 +158,11 @@ export default function App() {
                   ? `Complete · ${MODE_LABELS[lastCompleted]}`
                   : 'Idle'}
             </Text>
+            {running?.startsWith('sustained-') ? (
+              <Text style={styles.counter} testID="sustained-counter">
+                JS counter · {counter}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -161,7 +185,7 @@ export default function App() {
               testID={`benchmark-${mode}`}
             >
               <Text style={styles.buttonRoute}>
-                {mode.startsWith('worklet') ? 'WORKER RUNTIME' : 'RN RUNTIME'}
+                {mode.includes('worklet') ? 'WORKER RUNTIME' : 'RN RUNTIME'}
               </Text>
               <Text style={styles.buttonLabel}>{MODE_LABELS[mode]}</Text>
             </Pressable>
@@ -228,6 +252,7 @@ const styles = StyleSheet.create({
   statusCopy: { flex: 1, marginLeft: 12 },
   statusLabel: { color: colors.muted, fontFamily: 'Menlo', fontSize: 10, letterSpacing: 1.5 },
   statusValue: { color: colors.ink, fontSize: 14, fontWeight: '600', marginTop: 3 },
+  counter: { color: colors.muted, fontFamily: 'Menlo', fontSize: 11, marginTop: 4 },
   controls: { gap: 10 },
   button: {
     backgroundColor: colors.panelRaised,
