@@ -8,6 +8,8 @@ export default defineConfig({
   ssr: { resolve: { conditions: ['source'], externalConditions: ['source'] } },
   test: {
     pool: 'threads',
+    // Raw OS descriptor numbers can be reused across concurrent test files.
+    fileParallelism: false,
     minWorkers: 1,
     maxWorkers: 2,
   },
