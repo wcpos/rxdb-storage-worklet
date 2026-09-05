@@ -64,6 +64,8 @@ jobs:
     env:
       # Expo SDK 57 requires Xcode 26.4+; macos-15 only provides up to 26.3.
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      # Cold hosted XCTest startup can exceed Maestro's default two minutes.
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
       HAS_RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM != '' }}
     steps:
       - if: env.HAS_RXDB_PREMIUM == 'true'
