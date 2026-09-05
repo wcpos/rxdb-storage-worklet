@@ -17,22 +17,38 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm --filter './packages/**' -r typecheck
+      - run: pnpm --workspace-concurrency=1 --filter './packages/**' -r test
 
   conformance:
     runs-on: ubuntu-latest
+    env:
+      HAS_RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/checkout@v4
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: pnpm/action-setup@v4
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm conformance
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        working-directory: example
+        env:
+          RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
+        run: |
+          node node_modules/rxdb-premium/scripts/postinstall.js >/dev/null 2>&1
+          node node_modules/rxdb-premium/scripts/installer.js >/dev/null 2>&1
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        run: pnpm typecheck
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        run: pnpm conformance
         env:
           RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
 
@@ -69,6 +85,9 @@ jobs:
             ~/Library/Caches/CocoaPods
             example/ios/Pods
           key: pods-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'example/ios/Podfile.lock') }}
+      - if: env.HAS_RXDB_PREMIUM == 'true'
+        working-directory: example/ios
+        run: pod install
       - if: env.HAS_RXDB_PREMIUM == 'true'
         run: |
           mkdir -p /tmp/maestro
@@ -127,6 +146,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
+          arch: x86_64
           profile: pixel_6
           script: |
             pnpm --dir example exec expo start --dev-client > /tmp/metro.log 2>&1 &

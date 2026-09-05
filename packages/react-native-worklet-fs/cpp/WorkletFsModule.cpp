@@ -6,7 +6,10 @@
 #include <unistd.h>
 #include <worklets/WorkletRuntime/WorkletRuntime.h>
 
+#include <algorithm>
 #include <cerrno>
+#include <cmath>
+#include <limits>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -61,10 +64,36 @@ namespace jsi = facebook::jsi;
 }
 
 std::string stringArg(jsi::Runtime &runtime, const jsi::Value &value) {
+  if (!value.isString()) throw jsi::JSError::createTypeError(runtime, "Expected string");
   return value.asString(runtime).utf8(runtime);
 }
 
+std::string pathArg(jsi::Runtime &runtime, const jsi::Value &value) {
+  auto path = stringArg(runtime, value);
+  if (path.find('\0') != std::string::npos) {
+    throw jsi::JSError::createTypeError(runtime, "Expected path without NUL");
+  }
+  return path;
+}
+
+// Restrict positions to exact JS integers as well as the destination's range.
+constexpr double maxSafeInteger = 9007199254740991.0;
+const double maxFilePosition = std::min(maxSafeInteger, static_cast<double>(std::numeric_limits<off_t>::max()));
+double integerArg(jsi::Runtime &runtime, const jsi::Value &value, double max = maxSafeInteger) {
+  if (!value.isNumber()) throw jsi::JSError::createTypeError(runtime, "Expected number");
+  const double number = value.asNumber();
+  if (!std::isfinite(number) || number < 0 || std::floor(number) != number || number > max) {
+    throw jsi::JSError::createRangeError(runtime, "Invalid integer range");
+  }
+  return number;
+}
+
+int fdArg(jsi::Runtime &runtime, const jsi::Value &value) {
+  return static_cast<int>(integerArg(runtime, value, std::numeric_limits<int>::max()));
+}
+
 jsi::ArrayBuffer bufferArg(jsi::Runtime &runtime, const jsi::Value &value) {
+  if (!value.isObject()) throw jsi::JSError::createTypeError(runtime, "Expected ArrayBuffer");
   auto object = value.asObject(runtime);
   if (!object.isArrayBuffer(runtime)) {
     throw jsi::JSError::createTypeError(runtime, "Expected ArrayBuffer");
@@ -149,14 +178,18 @@ void defineFunction(
       runtime,
       property,
       jsi::Function::createFromHostFunction(
-          runtime, property, parameterCount, std::move(function)));
+          runtime, property, parameterCount,
+          [parameterCount, function = std::move(function)](jsi::Runtime &rt, const jsi::Value &self, const jsi::Value *args, size_t count) {
+            if (count < parameterCount) throw jsi::JSError::createTypeError(rt, "Missing arguments");
+            return function(rt, self, args, count);
+          }));
 }
 
 void installWorkletFs(jsi::Runtime &runtime) {
   jsi::Object fs(runtime);
 
   defineFunction(runtime, fs, "open", 2, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
-    const auto path = stringArg(runtime, args[0]);
+    const auto path = pathArg(runtime, args[0]);
     const auto mode = stringArg(runtime, args[1]);
     int flags = 0;
     if (mode == "r") {
@@ -176,34 +209,38 @@ void installWorkletFs(jsi::Runtime &runtime) {
 
   defineFunction(runtime, fs, "readAt", 4, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
     auto buffer = bufferArg(runtime, args[1]);
-    const auto length = static_cast<size_t>(args[3].asNumber());
-    if (length > buffer.size(runtime)) {
-      throw jsi::JSError::createRangeError(runtime, "Read exceeds buffer");
+    const int fd = fdArg(runtime, args[0]);
+    const auto length = static_cast<size_t>(integerArg(runtime, args[3], buffer.size(runtime)));
+    const auto at = static_cast<off_t>(integerArg(runtime, args[2], maxFilePosition - length));
+    size_t total = 0;
+    while (total < length) {
+      const auto count = ::pread(fd, buffer.data(runtime) + total, length - total, at + total);
+      if (count < 0) fail(runtime, errno, "pread");
+      if (count == 0) break; // EOF
+      total += static_cast<size_t>(count);
     }
-    const auto count = ::pread(
-        static_cast<int>(args[0].asNumber()),
-        buffer.data(runtime),
-        length,
-        static_cast<off_t>(args[2].asNumber()));
-    if (count < 0) fail(runtime, errno, "pread");
-    return jsi::Value(static_cast<double>(count));
+    return jsi::Value(static_cast<double>(total));
   });
 
   defineFunction(runtime, fs, "writeAt", 3, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
     auto buffer = bufferArg(runtime, args[1]);
-    const auto count = ::pwrite(
-        static_cast<int>(args[0].asNumber()),
-        buffer.data(runtime),
-        buffer.size(runtime),
-        static_cast<off_t>(args[2].asNumber()));
-    if (count < 0) fail(runtime, errno, "pwrite");
-    return jsi::Value(static_cast<double>(count));
+    const int fd = fdArg(runtime, args[0]);
+    const auto length = buffer.size(runtime);
+    const auto at = static_cast<off_t>(integerArg(runtime, args[2], maxFilePosition - length));
+    size_t total = 0;
+    while (total < length) {
+      const auto count = ::pwrite(fd, buffer.data(runtime) + total, length - total, at + total);
+      if (count < 0) fail(runtime, errno, "pwrite");
+      if (count == 0) fail(runtime, EIO, "pwrite made no progress");
+      total += static_cast<size_t>(count);
+    }
+    return jsi::Value(static_cast<double>(total));
   });
 
   defineFunction(runtime, fs, "truncate", 2, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
     if (::ftruncate(
-            static_cast<int>(args[0].asNumber()),
-            static_cast<off_t>(args[1].asNumber())) != 0) {
+            fdArg(runtime, args[0]),
+            static_cast<off_t>(integerArg(runtime, args[1], maxFilePosition))) != 0) {
       fail(runtime, errno, "ftruncate");
     }
     return jsi::Value::undefined();
@@ -211,35 +248,35 @@ void installWorkletFs(jsi::Runtime &runtime) {
 
   defineFunction(runtime, fs, "size", 1, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
     struct stat info {};
-    if (::fstat(static_cast<int>(args[0].asNumber()), &info) != 0) {
+    if (::fstat(fdArg(runtime, args[0]), &info) != 0) {
       fail(runtime, errno, "fstat");
     }
     return jsi::Value(static_cast<double>(info.st_size));
   });
 
   defineFunction(runtime, fs, "flush", 1, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
-    if (::fsync(static_cast<int>(args[0].asNumber())) != 0) {
+    if (::fsync(fdArg(runtime, args[0])) != 0) {
       fail(runtime, errno, "fsync");
     }
     return jsi::Value::undefined();
   });
 
   defineFunction(runtime, fs, "close", 1, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
-    if (::close(static_cast<int>(args[0].asNumber())) != 0) {
+    if (::close(fdArg(runtime, args[0])) != 0) {
       fail(runtime, errno, "close");
     }
     return jsi::Value::undefined();
   });
 
   defineFunction(runtime, fs, "mkdir", 1, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
-    if (::mkdir(stringArg(runtime, args[0]).c_str(), 0700) != 0) {
+    if (::mkdir(pathArg(runtime, args[0]).c_str(), 0700) != 0) {
       fail(runtime, errno, "mkdir");
     }
     return jsi::Value::undefined();
   });
 
   defineFunction(runtime, fs, "readdir", 1, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
-    const auto path = stringArg(runtime, args[0]);
+    const auto path = pathArg(runtime, args[0]);
     const auto names = directoryEntries(runtime, path);
     jsi::Array result(runtime, names.size());
     for (size_t index = 0; index < names.size(); ++index) {
@@ -257,13 +294,14 @@ void installWorkletFs(jsi::Runtime &runtime) {
   });
 
   defineFunction(runtime, fs, "remove", 2, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
-    removePath(runtime, stringArg(runtime, args[0]), args[1].getBool());
+    if (!args[1].isBool()) throw jsi::JSError::createTypeError(runtime, "Expected boolean");
+    removePath(runtime, pathArg(runtime, args[0]), args[1].getBool());
     return jsi::Value::undefined();
   });
 
   defineFunction(runtime, fs, "exists", 1, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) -> jsi::Value {
     struct stat info {};
-    if (::lstat(stringArg(runtime, args[0]).c_str(), &info) != 0) {
+    if (::lstat(pathArg(runtime, args[0]).c_str(), &info) != 0) {
       if (errno == ENOENT) return jsi::Value::null();
       fail(runtime, errno, "stat");
     }
@@ -277,8 +315,8 @@ void installWorkletFs(jsi::Runtime &runtime) {
 
   defineFunction(runtime, fs, "utf8Decode", 3, [](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *args, size_t) {
     auto buffer = bufferArg(runtime, args[0]);
-    const auto start = static_cast<size_t>(args[1].asNumber());
-    const auto end = static_cast<size_t>(args[2].asNumber());
+    const auto start = static_cast<size_t>(integerArg(runtime, args[1], buffer.size(runtime)));
+    const auto end = static_cast<size_t>(integerArg(runtime, args[2], buffer.size(runtime)));
     if (start > end || end > buffer.size(runtime)) {
       throw jsi::JSError::createRangeError(runtime, "Invalid UTF-8 range");
     }

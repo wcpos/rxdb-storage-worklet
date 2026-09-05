@@ -1,9 +1,9 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Subject } from 'rxjs';
 import { getRxStorageMemory } from '../../plugins/storage-memory/index.mjs';
-import { exposeRxStorageRemote, getRxStorageRemote } from '../../plugins/storage-remote/index.mjs';
+import { exposeWorkletRxStorage, getRxStorageWorklet } from '../../../../packages/rxdb-storage-worklet/lib/index.js';
+import { createFakeSchedulers } from './worklet-fake-schedulers.js';
 import { getRxStorageAbstractFilesystem } from 'rxdb-premium/plugins/storage-abstract-filesystem';
 import { createNodeWorkletFs } from '../../../../packages/react-native-worklet-fs/lib/node.js';
 import {
@@ -34,32 +34,19 @@ function getFilesystemStorage() {
   });
 }
 
-function throughRemoteChannel() {
-  const requests = new Subject<any>();
-  const responses = new Subject<any>();
-  exposeRxStorageRemote({
-    storage: getFilesystemStorage(),
-    messages$: requests,
-    send: (message) => responses.next(message),
-  });
-  return getRxStorageRemote({
-    identifier: `worklet-opfs-conformance-${channelId++}`,
-    mode: 'storage',
-    messageChannelCreator: async () => ({
-      messages$: responses,
-      send: (message) => requests.next(message),
-      async close() {
-        requests.complete();
-        responses.complete();
-      },
-    }),
+function storage() {
+  const receiveGlobalName = `__rxdbConformance${channelId++}`;
+  const fake = createFakeSchedulers(receiveGlobalName, true);
+  const backend = process.env.WORKLET_STORAGE_BACKEND === 'memory'
+    ? getRxStorageMemory() : getFilesystemStorage();
+  void fake.worklet.run(() => exposeWorkletRxStorage({ storage: backend, receiveGlobalName, scheduleOnRN: fake.scheduleOnRN }));
+  return getRxStorageWorklet({
+    runtime: {},
+    identifier: receiveGlobalName,
+    receiveGlobalName,
+    scheduleOnRuntime: fake.scheduleOnRuntime,
   });
 }
-
-const storage = () => process.env.WORKLET_STORAGE_BACKEND === 'memory'
-  ? getRxStorageMemory()
-  // inWorker deliberately returns serialized payloads; the public storage receives them via storage-remote.
-  : throughRemoteChannel();
 
 export const WORKLET_STORAGE = {
   name: 'worklet-opfs',

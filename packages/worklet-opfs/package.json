@@ -15,11 +15,16 @@
       "default": "./lib/index.js"
     }
   },
-  "files": ["lib", "src"],
+  "files": [
+    "lib",
+    "src",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --maxWorkers=2",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "pnpm build"
   },
   "dependencies": {
     "react-native-worklet-fs": "workspace:*"

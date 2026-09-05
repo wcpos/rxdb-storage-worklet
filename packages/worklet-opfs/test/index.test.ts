@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNodeWorkletFs } from 'react-native-worklet-fs/node';
 import {
   createAbstractFilesystemAdapter,
@@ -21,10 +21,32 @@ describe('worklet OPFS', () => {
 
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-  it.each(['', '.', '..', 'a/b', 'a\\b'])('rejects the invalid name %j', async (name) => {
+  it.each(['', '.', '..', 'a/b', 'a\\b', 'data\0suffix'])('rejects the invalid name %j', async (name) => {
     const directory = await createWorkletOpfs({ fs }).getDirectory();
     await expect(directory.getFileHandle(name)).rejects.toBeInstanceOf(TypeError);
     await expect(directory.getDirectoryHandle(name)).rejects.toBeInstanceOf(TypeError);
+    await expect(directory.removeEntry(name)).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it('rejects NUL names before invoking the backend', async () => {
+    const directory = await createWorkletOpfs({ fs }).getDirectory();
+    const exists = vi.spyOn(fs, 'exists').mockReturnValue(null);
+    await expect(directory.getFileHandle('data\0suffix')).rejects.toThrow(TypeError);
+    expect(exists).not.toHaveBeenCalled();
+  });
+
+  it('completes short adapter IO and rejects zero write progress', async () => {
+    const write = fs.writeAt.bind(fs), read = fs.readAt.bind(fs);
+    fs.writeAt = (fd, buffer, at) => write(fd, buffer.slice(0, 2), at);
+    fs.readAt = (fd, buffer, at, length) => read(fd, buffer, at, Math.min(2, length));
+    const directory = await createAbstractFilesystemAdapter(createWorkletOpfs({ fs })).getDirectory();
+    const access = await (await directory.getFileHandle('short', { create: true })).createAccessHandle();
+    try {
+      await access.write(Uint8Array.of(1, 2, 3, 4, 5), { at: 0 });
+      expect([...await access.read(0, 8)]).toEqual([1, 2, 3, 4, 5]);
+      fs.writeAt = () => 0;
+      await expect(access.write(Uint8Array.of(6), { at: 5 })).rejects.toThrow(/progress/);
+    } finally { await access.close(); }
   });
 
   it('uses the specified DOMException names', async () => {
@@ -110,6 +132,54 @@ describe('worklet OPFS', () => {
       Object.assign(globalThis, original);
       if (cryptoDescriptor) Object.defineProperty(globalThis, 'crypto', cryptoDescriptor);
     }
+  });
+
+  it('keeps Blob bytes immutable, copies Blob parts and normalizes MIME', async () => {
+    const original = globalThis.Blob;
+    try {
+      Object.assign(globalThis, { Blob: undefined });
+      installWorkletRuntimePolyfills({ fs });
+      const source = Uint8Array.of(97, 98, 99);
+      const blob = new Blob([source], { type: 'Text/PLAIN' });
+      source[0] = 120;
+      new Uint8Array(await blob.arrayBuffer())[0] = 120;
+      expect(await blob.text()).toBe('abc');
+      expect(await new Blob([blob, '!']).text()).toBe('abc!');
+      expect(blob.type).toBe('text/plain');
+      expect(new Blob([], { type: 'text/€' }).type).toBe('');
+    } finally { globalThis.Blob = original; }
+  });
+
+  it('honors UTF-8 fatal and BOM semantics and rejects unsupported options', () => {
+    const original = globalThis.TextDecoder;
+    try {
+      Object.assign(globalThis, { TextDecoder: undefined });
+      installWorkletRuntimePolyfills({ fs });
+      for (const invalid of [[0xff], [0xc0, 0x80], [0xed, 0xa0, 0x80], [0xf4, 0x90, 0x80, 0x80], [0xe2, 0x82]]) {
+        expect(() => new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(invalid))).toThrow(TypeError);
+      }
+      expect(new TextDecoder().decode(Uint8Array.of(0xef, 0xbb, 0xbf, 97))).toBe('a');
+      expect(new TextDecoder('utf-8', { ignoreBOM: true }).decode(Uint8Array.of(0xef, 0xbb, 0xbf, 97))).toBe('\ufeffa');
+      expect(new TextDecoder().decode(Uint8Array.of(0xff))).toBe('�');
+      expect(new TextDecoder('utf-8', { fatal: true }).decode(fs.utf8Encode('€🪽'))).toBe('€🪽');
+      expect(() => new TextDecoder('utf-16')).toThrow(RangeError);
+      expect(() => new TextDecoder().decode(new Uint8Array(), { stream: true })).toThrow(TypeError);
+    } finally { globalThis.TextDecoder = original; }
+  });
+
+  it('adds digest without replacing existing crypto or subtle members', async () => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    const subtle = { encrypt: () => 'kept' };
+    const crypto = { getRandomValues: () => 'kept', subtle };
+    try {
+      Object.defineProperty(globalThis, 'crypto', { configurable: true, value: crypto });
+      installWorkletRuntimePolyfills({ fs });
+      expect(globalThis.crypto).toBe(crypto);
+      expect(globalThis.crypto.subtle).toBe(subtle);
+      expect(crypto.getRandomValues()).toBe('kept');
+      expect(subtle.encrypt()).toBe('kept');
+      expect((await globalThis.crypto.subtle.digest('SHA-256', new ArrayBuffer(0))).byteLength).toBe(32);
+    } finally { if (original) Object.defineProperty(globalThis, 'crypto', original); }
   });
 
   it('serializes promise lock requests independently by name', async () => {

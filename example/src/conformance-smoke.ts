@@ -75,7 +75,15 @@ export async function runConformanceSmoke(onResult?: (result: ConformanceResult)
     }
   };
 
-  let instance = await open();
+  let instance: Awaited<ReturnType<typeof open>>;
+  try { instance = await open(); }
+  catch (error) {
+    const result = { name: 'initialization', pass: false, detail: String(error) };
+    console.error(`CONFORMANCE initialization FAIL ${result.detail}`);
+    results.push(result);
+    onResult?.(result);
+    return results;
+  }
   const changes: any[] = [];
   const subscription = instance.changeStream().subscribe((event) => changes.push(event));
   let inserted!: Document;

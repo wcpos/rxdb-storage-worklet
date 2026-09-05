@@ -82,13 +82,15 @@ function ConformanceScreen({ close }: { close: () => void }) {
   const [complete, setComplete] = useState(false);
   useEffect(() => {
     void runConformanceSmoke((result) => setResults((current) => [...current, result]))
+      .catch((error) => setResults((current) => [...current, { name: 'smoke', pass: false, detail: String(error) }]))
       .finally(() => setComplete(true));
   }, []);
   const failures = results.filter((result) => !result.pass).length;
+  const allPass = results.length === 8 && failures === 0;
   return <SafeAreaView style={styles.safeArea}><ScrollView contentContainerStyle={styles.container}>
     <View style={styles.header}><Text style={styles.eyebrow}>RXDB · DEVICE SUITE</Text><Text style={styles.title}>Conformance smoke</Text></View>
-    <Text style={failures ? styles.fail : styles.pass} testID="conformance-summary">
-      {complete ? `${results.length} scenarios · ${failures ? `FAILED ${failures}` : 'ALL PASS'}` : `${results.length} scenarios · RUNNING`}
+    <Text style={allPass ? styles.pass : styles.fail} testID="conformance-summary">
+      {complete ? `${results.length} scenarios · ${allPass ? 'ALL PASS' : `FAILED ${failures} (${results.length}/8 scenarios)`}` : `${results.length} scenarios · RUNNING`}
     </Text>
     {results.map((result, index) => <View key={`${result.name}-${index}`} style={styles.metricRow}><Text style={styles.metricLabel}>{result.name}</Text><Text style={result.pass ? styles.pass : styles.fail}>{result.pass ? 'PASS' : 'FAIL'} · {result.detail}</Text></View>)}
     <Pressable accessibilityRole="button" onPress={close} style={styles.button}><Text style={styles.buttonLabel}>Back to benchmarks</Text></Pressable>

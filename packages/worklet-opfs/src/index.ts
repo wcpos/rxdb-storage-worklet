@@ -8,7 +8,7 @@ const NOT_FOUND = 'A requested file or directory could not be found at the time 
 const openPaths = new Set<string>();
 
 function validName(name: string): boolean {
-  return name !== '' && name !== '.' && name !== '..' && !name.includes('/') && !name.includes('\\');
+  return !name.includes('\0') && name !== '' && name !== '.' && name !== '..' && !name.includes('/') && !name.includes('\\');
 }
 
 function exception(message: string, name: string): DOMException {
@@ -220,27 +220,28 @@ export function installWorkletRuntimePolyfills({ fs }: { fs: WorkletFs }): strin
   if (typeof globalThis.Blob === 'undefined' || typeof globalThis.Blob.prototype.arrayBuffer !== 'function') {
     class WorkletBlob {
       readonly type: string;
-      private readonly data: Uint8Array;
-      constructor(parts: (WorkletBuffer | string)[] = [], options: { type?: string } = {}) {
+      readonly #data: Uint8Array;
+      constructor(parts: (WorkletBuffer | string | WorkletBlob)[] = [], options: { type?: string } = {}) {
         const chunks = parts.map((part) => typeof part === 'string'
           ? new Uint8Array(fs.utf8Encode(part))
-          : bytes(part));
-        this.data = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.byteLength, 0));
+          : part instanceof WorkletBlob ? part.#data : bytes(part));
+        this.#data = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.byteLength, 0));
         let offset = 0;
         for (const chunk of chunks) {
-          this.data.set(chunk, offset);
+          this.#data.set(chunk, offset);
           offset += chunk.byteLength;
         }
-        this.type = options.type ?? '';
+        const type = options.type ?? '';
+        this.type = /[^\x20-\x7e]/.test(type) ? '' : type.toLowerCase();
       }
       get size(): number {
-        return this.data.byteLength;
+        return this.#data.byteLength;
       }
       async arrayBuffer(): Promise<ArrayBuffer> {
-        return arrayBuffer(this.data);
+        return this.#data.slice().buffer;
       }
       async text(): Promise<string> {
-        const data = arrayBuffer(this.data);
+        const data = arrayBuffer(this.#data);
         return fs.utf8Decode(data, 0, data.byteLength);
       }
     }
@@ -268,11 +269,30 @@ export function installWorkletRuntimePolyfills({ fs }: { fs: WorkletFs }): strin
   }
   if (typeof globalThis.TextDecoder === 'undefined') {
     class WorkletTextDecoder {
-      decode(input?: WorkletBuffer): string {
+      readonly encoding = 'utf-8';
+      readonly fatal: boolean;
+      readonly ignoreBOM: boolean;
+      constructor(label = 'utf-8', options: TextDecoderOptions = {}) {
+        if (!['utf-8', 'utf8', 'unicode-1-1-utf-8'].includes(label.trim().toLowerCase())) {
+          throw new RangeError('Only UTF-8 is supported');
+        }
+        this.fatal = Boolean(options.fatal);
+        this.ignoreBOM = Boolean(options.ignoreBOM);
+      }
+      decode(input?: WorkletBuffer, options: TextDecodeOptions = {}): string {
+        if (options.stream) throw new TypeError('Streaming decode is not supported');
         if (!input) return '';
         const view = bytes(input);
         const source = arrayBuffer(view);
-        return fs.utf8Decode(source, 0, source.byteLength);
+        const text = fs.utf8Decode(source, 0, source.byteLength);
+        if (this.fatal) {
+          // Valid UTF-8 has a unique encoding; replacement of malformed bytes cannot round-trip.
+          const encoded = new Uint8Array(fs.utf8Encode(text));
+          if (encoded.length !== view.length || encoded.some((value, index) => value !== view[index])) {
+            throw new TypeError('Invalid UTF-8');
+          }
+        }
+        return !this.ignoreBOM && text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
       }
     }
     Object.defineProperty(globalThis, 'TextDecoder', { configurable: true, writable: true, value: WorkletTextDecoder });
@@ -287,7 +307,11 @@ export function installWorkletRuntimePolyfills({ fs }: { fs: WorkletFs }): strin
         return sha256(input);
       },
     };
-    Object.defineProperty(globalThis, 'crypto', { configurable: true, writable: true, value: { subtle } });
+    if (!globalThis.crypto) {
+      Object.defineProperty(globalThis, 'crypto', { configurable: true, writable: true, value: {} });
+    }
+    if (!globalThis.crypto.subtle) Object.defineProperty(globalThis.crypto, 'subtle', { configurable: true, value: {} });
+    Object.defineProperty(globalThis.crypto.subtle, 'digest', { configurable: true, writable: true, value: subtle.digest });
     installed.push('crypto');
   }
   return installed;
@@ -334,14 +358,25 @@ class AbstractSyncAccessHandle {
     const handle = await this.handle;
     const end = to ?? handle.getSize();
     const data = new Uint8Array(end - from);
-    const count = data.length ? handle.read(data, { at: from }) : 0;
+    let count = 0;
+    while (count < data.length) {
+      const read = handle.read(data.subarray(count), { at: from + count });
+      if (read === 0) break; // EOF
+      count += read;
+    }
     return count === data.length ? data : data.slice(0, count);
   }
   getWritable(): AbstractWritable {
     return new AbstractWritable(this);
   }
   async write(data: Uint8Array, options: { at: number }): Promise<void> {
-    (await this.handle).write(data, options);
+    const handle = await this.handle;
+    let count = 0;
+    while (count < data.length) {
+      const written = handle.write(data.subarray(count), { at: options.at + count });
+      if (written === 0) throw new Error('write made no progress');
+      count += written;
+    }
   }
   async truncate(size: number): Promise<void> {
     (await this.handle).truncate(size);

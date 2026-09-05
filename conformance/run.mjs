@@ -43,6 +43,9 @@ async function prepareCheckout() {
 
   run('pnpm', ['build']);
   await cp(path.join(root, 'conformance/storage-entry.ts'), path.join(checkout, 'test/unit/worklet-opfs-storage.ts'));
+  const schedulers = await readFile(path.join(root, 'packages/rxdb-storage-worklet/test/fake-schedulers.ts'), 'utf8');
+  await writeFile(path.join(checkout, 'test/unit/worklet-fake-schedulers.ts'), schedulers.replace('../src/index.js', '../../../../packages/rxdb-storage-worklet/lib/index.js'));
+  await cp(path.join(root, 'conformance/binary-attachments.ts'), path.join(checkout, 'test/unit/worklet-binary-attachments.test.ts'));
   const configPath = path.join(checkout, 'test/unit/config.ts');
   let config = await readFile(configPath, 'utf8');
   if (!config.includes("./worklet-opfs-storage.ts")) config = config.replace("import { CUSTOM_STORAGE } from './custom-storage.ts';", "import { CUSTOM_STORAGE } from './custom-storage.ts';\nimport { WORKLET_STORAGE } from './worklet-opfs-storage.ts';");
@@ -53,7 +56,7 @@ async function prepareCheckout() {
 }
 
 function runSuite(backend) {
-  const result = spawnSync(process.execPath, ['--expose-gc', 'node_modules/mocha/bin/mocha.js', '--config', './config/.mocharc.cjs', './test_tmp/unit/rx-storage-implementations.test.js', '--reporter', 'json', '--no-bail'], {
+  const result = spawnSync(process.execPath, ['--expose-gc', 'node_modules/mocha/bin/mocha.js', '--config', './config/.mocharc.cjs', './test_tmp/unit/rx-storage-implementations.test.js', './test_tmp/unit/worklet-binary-attachments.test.js', '--reporter', 'json', '--no-bail'], {
     cwd: checkout,
     env: { ...process.env, DEFAULT_STORAGE: 'worklet-opfs', WORKLET_STORAGE_BACKEND: backend },
     encoding: 'utf8',
@@ -63,6 +66,7 @@ function runSuite(backend) {
   const report = JSON.parse(result.stdout.slice(jsonStart));
   console.log(`CONFORMANCE ${backend}: ${report.stats.passes} passed, ${report.stats.failures} failed, ${report.stats.pending} pending`);
   if (report.failures.length) for (const failure of report.failures) console.error(`FAIL ${failure.fullTitle}: ${failure.err.message}`);
+  if (result.status !== 0 && !report.stats.failures) throw new Error(`Mocha ${backend} exited ${result.status}`);
   return report.stats.failures;
 }
 

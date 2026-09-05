@@ -10,5 +10,5 @@ appId: com.wcpos.rxdbstorageworklet
 - extendedWaitUntil:
     visible:
       id: conformance-summary
-      text: ".*ALL PASS"
+      text: "8 scenarios · ALL PASS"
     timeout: 600000
