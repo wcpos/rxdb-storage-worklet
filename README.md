@@ -174,8 +174,10 @@ The filesystem engine is rxdb-premium's; this library changes where it runs, not
 
 ## Contributing and upstream
 
-- **RxDB**: `rxdb-storage-worklet` is offered to `pubkey/rxdb` as `plugins/storage-worklet`, beside `storage-worker`; `worklet-opfs` as a sibling of `expo-opfs`. The conformance run in this repo is the evidence.
-- **Software Mansion**: the fix for reanimated #9817 (Bundle Mode next to Metro resolvers that remap `react-native`) is carried here as a patch and proposed upstream.
+This library is being dogfooded in the WCPOS app first. Once it has run on real devices and real stores for a while and the round-trip cost is understood, three upstream conversations follow, in this order:
+
+- **Software Mansion**: the fix for reanimated #9817 (Bundle Mode next to Metro resolvers that remap `react-native`), carried here as a patch until then.
+- **RxDB**: `rxdb-storage-worklet` as `plugins/storage-worklet` beside `storage-worker`, and `worklet-opfs` as a sibling of `expo-opfs`; the conformance run in this repo is the evidence.
 - **React Native**: Android autolinking only emits a pure C++ TurboModule provider when the package also has a codegen `libraryName`; the documented `cxxModule*` keys alone are skipped. This library ships the codegen spec to work within that.
 
 Issues and PRs are welcome. Run `pnpm test`, `pnpm typecheck` and `pnpm conformance` before opening one.
