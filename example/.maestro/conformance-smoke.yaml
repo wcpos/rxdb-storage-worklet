@@ -1,10 +1,12 @@
 appId: com.wcpos.rxdbstorageworklet
 ---
 - launchApp
-- scrollUntilVisible:
-    element:
+# The button is on the first screen; wait for the bundle to render rather than scrolling for it.
+# scrollUntilVisible at 100% visibility misjudged a fully visible card on a hosted simulator (run 33973533826).
+- extendedWaitUntil:
+    visible:
       id: conformance-open
-    direction: DOWN
+    timeout: 120000
 - tapOn:
     id: conformance-open
 - extendedWaitUntil:
