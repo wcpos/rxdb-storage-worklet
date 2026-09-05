@@ -39,8 +39,10 @@ jobs:
         env:
           RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
         run: |
-          node node_modules/rxdb-premium/scripts/postinstall.js >/dev/null 2>&1
-          node node_modules/rxdb-premium/scripts/installer.js >/dev/null 2>&1
+          set -o pipefail
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
       - if: env.HAS_RXDB_PREMIUM == 'true'
         run: pnpm typecheck
       - if: env.HAS_RXDB_PREMIUM == 'true'
@@ -69,8 +71,10 @@ jobs:
         env:
           RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
         run: |
-          node node_modules/rxdb-premium/scripts/postinstall.js >/dev/null 2>&1
-          node node_modules/rxdb-premium/scripts/installer.js >/dev/null 2>&1
+          set -o pipefail
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
           npx expo prebuild --platform ios --no-install
       - if: env.HAS_RXDB_PREMIUM == 'true'
         uses: actions/cache@v4
@@ -128,8 +132,10 @@ jobs:
         env:
           RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
         run: |
-          node node_modules/rxdb-premium/scripts/postinstall.js >/dev/null 2>&1
-          node node_modules/rxdb-premium/scripts/installer.js >/dev/null 2>&1
+          set -o pipefail
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
           npx expo prebuild --platform android --no-install
           mkdir -p /tmp/maestro
           curl -Ls https://get.maestro.mobile.dev | bash
