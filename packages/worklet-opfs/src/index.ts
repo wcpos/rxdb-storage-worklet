@@ -218,13 +218,17 @@ export function createWorkletOpfs(options: { fs?: WorkletFs; rootDirectory?: str
 export function installWorkletRuntimePolyfills({ fs }: { fs: WorkletFs }): string[] {
   const installed: string[] = [];
   if (typeof globalThis.Blob === 'undefined' || typeof globalThis.Blob.prototype.arrayBuffer !== 'function') {
+    const IncompleteBlob = globalThis.Blob;
     class WorkletBlob {
       readonly type: string;
       readonly #data: Uint8Array;
       constructor(parts: (WorkletBuffer | string | WorkletBlob)[] = [], options: { type?: string } = {}) {
         const chunks = parts.map((part) => typeof part === 'string'
           ? new Uint8Array(fs.utf8Encode(part))
-          : part instanceof WorkletBlob ? part.#data : bytes(part));
+          : part instanceof WorkletBlob ? part.#data
+            : IncompleteBlob && part instanceof IncompleteBlob
+              ? (() => { throw new TypeError('Blob parts from the replaced implementation are unsupported.'); })()
+              : bytes(part));
         this.#data = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.byteLength, 0));
         let offset = 0;
         for (const chunk of chunks) {

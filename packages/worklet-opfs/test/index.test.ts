@@ -150,6 +150,17 @@ describe('worklet OPFS', () => {
     } finally { globalThis.Blob = original; }
   });
 
+  it('rejects Blob instances from the incomplete implementation it replaces', () => {
+    const original = globalThis.Blob;
+    class IncompleteBlob {}
+    try {
+      Object.assign(globalThis, { Blob: IncompleteBlob });
+      const legacyBlob = new IncompleteBlob();
+      installWorkletRuntimePolyfills({ fs });
+      expect(() => new Blob([legacyBlob as unknown as BlobPart])).toThrow(TypeError);
+    } finally { globalThis.Blob = original; }
+  });
+
   it('honors UTF-8 fatal and BOM semantics and rejects unsupported options', () => {
     const original = globalThis.TextDecoder;
     try {

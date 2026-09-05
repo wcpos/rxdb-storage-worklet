@@ -60,6 +60,7 @@ afterEach(async () => {
   for (const { database, drain } of databases.splice(0)) {
     await settle(database.close(), drain);
   }
+  vi.restoreAllMocks();
 });
 
 describe('worklet storage channel', () => {
@@ -82,7 +83,20 @@ describe('worklet storage channel', () => {
     expect(timings[0].roundTripMs).toBe(timings[0].replyMs - timings[0].sentMs);
     expect(timings[0].roundTripMs).toBeGreaterThan(timings[0].rnDispatchMs);
     await channel.close();
-    vi.restoreAllMocks();
+  });
+
+  it('keeps receiving replies when the timing observer throws', async () => {
+    const fake = createFakeSchedulers('__throwingTiming');
+    const channel = await createWorkletMessageChannel({
+      runtime: {}, receiveGlobalName: '__throwingTiming', scheduleOnRuntime: fake.scheduleOnRuntime,
+      onTiming: () => { throw new Error('observer failed'); },
+    })();
+    channel.send({ requestId: 'timed', method: 'custom', params: [] });
+    for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+    const reply = firstValueFrom(channel.messages$);
+    expect(() => (fake.rn.get() as any)(JSON.stringify({ answerTo: 'timed', return: null }))).not.toThrow();
+    await expect(reply).resolves.toMatchObject({ answerTo: 'timed', return: null });
+    await channel.close();
   });
 
   it('returns RxStorage synchronously for createRxDatabase', () => {
@@ -209,6 +223,7 @@ describe('worklet storage channel', () => {
       expect((await settle(instance.bulkWrite([{ document }], 'binary'), fake.drain)).error).toEqual([]);
       const read = await settle(instance.getAttachmentData('binary', 'binary', 'binary-digest'), fake.drain);
       expect(new Uint8Array(await read.arrayBuffer())).toEqual(bytes);
+      expect(read.type).toBe('application/octet-stream');
       expect(fake.messages.every((message) => typeof message === 'string')).toBe(true);
       expect(fake.messages.some((message) => JSON.parse(message as string).method === 'bulkWrite')).toBe(true);
       await settle(instance.close(), fake.drain);
@@ -266,12 +281,14 @@ describe('worklet storage channel', () => {
     }
     try {
       Object.assign(globalThis, { Blob: RNBlob });
-      globalThis.fetch = vi.fn(async () => ({ blob: async () => new OriginalBlob([Uint8Array.of(0, 128, 255)]) })) as any;
+      globalThis.fetch = vi.fn(async () => ({ blob: async () => new OriginalBlob([Uint8Array.of(0, 128, 255)], { type: 'image/png' }) })) as any;
       const reply = firstValueFrom(channel.messages$);
-      (fake.rn.get() as any)(JSON.stringify({ method: 'getAttachmentData', answerTo: 'reply', return: 'AID/' }));
+      (fake.rn.get() as any)(JSON.stringify({ method: 'getAttachmentData', answerTo: 'reply', return: 'AID/', returnType: 'image/png' }));
       const result = await reply;
       expect(result.error).toBeUndefined();
       expect([...new Uint8Array(await result.return.arrayBuffer())]).toEqual([0, 128, 255]);
+      expect(result.return.type).toBe('image/png');
+      expect(globalThis.fetch).toHaveBeenCalledWith('data:image/png;base64,AID/');
     } finally {
       globalThis.Blob = OriginalBlob; globalThis.fetch = originalFetch;
       await channel.close();
@@ -289,6 +306,23 @@ describe('worklet storage channel', () => {
     expect(scheduled.mock.calls[0][0]).toBe(receiveWorkletMessage);
     await settle(channel.close(), fake.drain);
     await fake.worklet.run(dispose);
+  });
+
+  it('drains exposure disposal when reply delivery throws', async () => {
+    const receiveGlobalName = `__deliveryFailure${++sequence}`;
+    const dispose = await exposeWorkletRxStorage({
+      storage: getRxStorageMemory(), receiveGlobalName,
+      scheduleOnRN: () => { throw new Error('delivery failed'); },
+    });
+    (globalThis as any)[receiveGlobalName](JSON.stringify({
+      requestId: 'delivery-failure', connectionId: 'delivery-failure', method: 'custom', params: [],
+    }));
+    for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+    const result = await Promise.race([
+      dispose().then(() => 'drained'),
+      new Promise<string>((resolve) => setTimeout(() => resolve('timed out'), 25)),
+    ]);
+    expect(result).toBe('drained');
   });
 
 });

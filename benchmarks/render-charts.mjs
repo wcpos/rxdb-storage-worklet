@@ -121,7 +121,7 @@ function timeline(platforms, palette) {
     });
     const duration = Math.max(4000, ...data.flatMap(d => d.real.map(p => p.time)));
     const x = ms => start + ms / duration * (end - start);
-    const bands = `<g fill="${palette.baseline}" opacity="0.25">${data.map(({ blocked, label }) => blocked.map(span => `<rect x="${x(span.start)}" y="${top}" width="${x(span.end) - x(span.start)}" height="${bottom - top}"><title>${xml(label)}: JS thread blocked for ${Number(((span.end - span.start) / 1000).toFixed(3))} s</title></rect>`).join('')).join('')}</g>`;
+    const bands = `<g opacity="0.25">${data.map(({ blocked, label, token }) => blocked.map(span => `<rect x="${x(span.start)}" y="${top}" width="${x(span.end) - x(span.start)}" height="${bottom - top}" fill="${palette[token]}"><title>${xml(label)}: JS thread blocked for ${Number(((span.end - span.start) / 1000).toFixed(3))} s</title></rect>`).join('')).join('')}</g>`;
     // Label only the longest span per series; every band has an accessible per-span title.
     const labels = data.map(({ blocked, token }, index) => {
       const span = [...blocked].sort((a, b) => (b.end - b.start) - (a.end - a.start))[0];

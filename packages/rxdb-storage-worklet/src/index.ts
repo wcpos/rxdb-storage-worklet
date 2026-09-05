@@ -59,6 +59,7 @@ async function serializeMessage(message: any, timing?: { rnSerializeMs: number }
       }
     }
   } else if (copy.method === 'getAttachmentData' && copy.return instanceof Blob) {
+    copy.returnType = copy.return.type;
     copy.return = await blobAsBase64(copy.return);
   }
   const started = timing ? performance.now() : 0;
@@ -77,11 +78,12 @@ function deserializeMessage(serialized: string): any {
       }
     }
   } else if (message.method === 'getAttachmentData' && typeof message.return === 'string') {
+    const type = message.returnType ?? '';
     // RN's built-in Blob rejects ArrayBuffer parts; keep its native reply decoder.
     if (typeof Blob.prototype.arrayBuffer !== 'function') {
-      return createBlobFromBase64(message.return, '').then((blob) => ({ ...message, return: blob }));
+      return createBlobFromBase64(message.return, type).then((blob) => ({ ...message, return: blob }));
     }
-    message.return = new Blob([base64ToArrayBuffer(message.return)], { type: '' });
+    message.return = new Blob([base64ToArrayBuffer(message.return)], { type });
   }
   return message;
 }
@@ -128,7 +130,7 @@ export function createWorkletMessageChannel(options: {
       const timing = timings.get(message.answerTo);
       if (timing) {
         timings.delete(message.answerTo);
-        options.onTiming?.({ ...timing, replyMs, roundTripMs: replyMs - timing.sentMs });
+        try { options.onTiming?.({ ...timing, replyMs, roundTripMs: replyMs - timing.sentMs }); } catch {}
       }
       void Promise.resolve().then(() => deserializeMessage(serialized)).then(accept, (error) => {
         accept({ ...message, return: undefined, error: { message: String(error) } });
@@ -207,6 +209,7 @@ export async function exposeWorkletRxStorage(options: {
       ...message, return: undefined, error: { message: String(error) },
     })).then((serialized) => {
       scheduleOnRN(options.receiveOnRN ?? deliverToGlobal, receiveGlobalName, serialized);
+    }).catch(() => undefined).finally(() => {
       if (message.answerTo !== 'changestream' && --pending === 0) drained?.();
     });
   };

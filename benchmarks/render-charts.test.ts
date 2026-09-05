@@ -36,11 +36,13 @@ describe('benchmark chart rendering', () => {
   it('replaces a materialised descending run with a blocked band and uses real-sample p95', async () => {
     const platforms = structuredClone(fixture);
     platforms[0].modes['sustained-js-filesystem'].lag.series = [...Array.from({ length: 251 }, (_, i) => 4000 - i * 16), 2];
+    platforms[0].modes['sustained-worklet-filesystem'].lag.series = [...Array.from({ length: 251 }, (_, i) => 4000 - i * 16), 2];
     const output = await mkdtemp(path.join(tmpdir(), 'worklet-blocked-'));
     await renderCharts(platforms, output);
     const svg = await readFile(path.join(output, 'lag-timeline-light.svg'), 'utf8');
     expect(svg).toContain('JS thread blocked for 4 s');
-    expect(svg).toContain('fill="#eb6834" opacity="0.25"');
+    expect(svg).toMatch(/<rect[^>]+fill="#eb6834"[^>]*><title>JS thread baseline: JS thread blocked/);
+    expect(svg).toMatch(/<rect[^>]+fill="#2a78d6"[^>]*><title>Worklet \(this library\): JS thread blocked/);
     expect(svg).toContain('of 2 real samples');
     expect(svg).toContain('p95 = 4000 ms');
     const baseline = svg.match(/<polyline[^>]+aria-label="JS thread baseline"/)!;

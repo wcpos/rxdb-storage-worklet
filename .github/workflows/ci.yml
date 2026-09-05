@@ -51,8 +51,8 @@ jobs:
           set -o pipefail
           printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > "$GITHUB_WORKSPACE/.env"
           unset RXDB_PREMIUM
-          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
-          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | sed -e '/^accessToken: /d' -e '/access-tokens\/0x/d'
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | sed -e '/^accessToken: /d' -e '/access-tokens\/0x/d'
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
       - if: env.HAS_RXDB_PREMIUM == 'true'
         run: pnpm typecheck
@@ -87,8 +87,8 @@ jobs:
           set -o pipefail
           printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > "$GITHUB_WORKSPACE/.env"
           unset RXDB_PREMIUM
-          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
-          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | sed -e '/^accessToken: /d' -e '/access-tokens\/0x/d'
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | sed -e '/^accessToken: /d' -e '/access-tokens\/0x/d'
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
           npx expo prebuild --platform ios --no-install
       - if: env.HAS_RXDB_PREMIUM == 'true'
@@ -164,8 +164,8 @@ jobs:
           set -o pipefail
           printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > "$GITHUB_WORKSPACE/.env"
           unset RXDB_PREMIUM
-          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
-          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | sed -e '/^accessToken: /d' -e '/access-tokens\/0x/d'
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | sed -e '/^accessToken: /d' -e '/access-tokens\/0x/d'
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
           npx expo prebuild --platform android --no-install
           mkdir -p /tmp/maestro
