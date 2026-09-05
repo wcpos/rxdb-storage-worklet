@@ -3,6 +3,15 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      benchmark:
+        description: Run the full benchmark after mandatory conformance smoke (both platforms)
+        type: boolean
+        default: false
+# Hosted iOS can exceed Maestro's benchmark scroll timeout. Keep smoke mandatory.
+# Once this trigger is on the default branch, maintainers can opt in:
+# gh workflow run ci.yml --ref <branch> -f benchmark=true
 
 jobs:
   unit:
@@ -113,15 +122,18 @@ jobs:
         working-directory: example
         run: |
           maestro test .maestro/conformance-smoke.yaml --format junit --output /tmp/maestro/conformance.xml --debug-output /tmp/maestro/conformance
+      - if: env.HAS_RXDB_PREMIUM == 'true' && inputs.benchmark
+        working-directory: example
+        run: |
           maestro test .maestro/benchmark.yaml --format junit --output /tmp/maestro/benchmark.xml --debug-output /tmp/maestro/benchmark
           node scripts/collect-results.mjs /tmp/metro.log ios
+          cp ../benchmarks/ios.json /tmp/maestro/benchmark/ios.json
       - if: always() && env.HAS_RXDB_PREMIUM == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ios-e2e
           include-hidden-files: true
           path: |
-            benchmarks/
             /tmp/maestro/
             /tmp/metro.log
             /tmp/xcodebuild.log
@@ -191,14 +203,12 @@ jobs:
             curl --fail --retry 60 --retry-connrefused --retry-delay 1 http://localhost:8081/status
             curl --fail --max-time 180 'http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=android&dev=true&minify=false' -o /dev/null
             maestro test example/.maestro/conformance-smoke.yaml --format junit --output /tmp/maestro/conformance.xml --debug-output /tmp/maestro/conformance
-            maestro test example/.maestro/benchmark.yaml --format junit --output /tmp/maestro/benchmark.xml --debug-output /tmp/maestro/benchmark
-            node example/scripts/collect-results.mjs /tmp/metro.log android
+            if [ "${{ inputs.benchmark }}" = "true" ]; then maestro test example/.maestro/benchmark.yaml --format junit --output /tmp/maestro/benchmark.xml --debug-output /tmp/maestro/benchmark && node example/scripts/collect-results.mjs /tmp/metro.log android && cp benchmarks/android.json /tmp/maestro/benchmark/android.json; fi
       - if: always() && env.HAS_RXDB_PREMIUM == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: android-e2e
           include-hidden-files: true
           path: |
-            benchmarks/
             /tmp/maestro/
             /tmp/metro.log
