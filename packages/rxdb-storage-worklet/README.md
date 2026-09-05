@@ -17,6 +17,24 @@ storage instances before destroying the runtime. Before exposure disposal, stop 
 and channel close so requests still queued on RN have reached the worker and
 settled. Do not dispose an exposure while a sender is still draining.
 
+## Bundle-mode replies and benchmark timing
+
+In Worklets bundle mode, import `receiveWorkletMessage` on RN and pass that
+function reference as an argument to your worker initializer. Inside the worker,
+pass it as `receiveOnRN` to `exposeWorkletRxStorage` (see the example initializer).
+Do not re-import it inside the worker: `scheduleOnRN` requires an RN-defined
+function reference; a worker-local function cannot deliver the reply.
+
+RN must also provide a binary-capable Blob implementation for attachment replies
+when its fetch implementation cannot decode data URLs. The example uses the
+existing `installWorkletRuntimePolyfills` on RN and the worker.
+
+The optional `onTiming` callback on `getRxStorageWorklet` reports matched RN
+requests: stringify duration (excluding clone/attachment conversion), scheduling
+call duration, and send-to-reply-entry elapsed time. The send timestamp precedes
+serialization but follows the channel send queue. These are not CPU-cost shares;
+round trips also include worker work and queue waits. Instrumentation is opt-in.
+
 ## Durability
 
 The filesystem backend inherits the premium abstract-filesystem engine's

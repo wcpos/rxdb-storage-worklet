@@ -8,6 +8,7 @@ import {
   createWorkletMessageChannel,
   exposeWorkletRxStorage,
   getRxStorageWorklet,
+  receiveWorkletMessage,
 } from '../src/index.js';
 
 const schema = {
@@ -62,6 +63,28 @@ afterEach(async () => {
 });
 
 describe('worklet storage channel', () => {
+  it('times stringify, dispatch and matching replies independently', async () => {
+    const fake = createFakeSchedulers('__timed');
+    const timings: any[] = [];
+    const channel = await createWorkletMessageChannel({
+      runtime: {}, receiveGlobalName: '__timed', scheduleOnRuntime: fake.scheduleOnRuntime,
+      onTiming: timing => timings.push(timing),
+    })();
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now += 2);
+    channel.send({ requestId: 'timed', method: 'custom', params: [] });
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    (fake.rn.get() as any)(JSON.stringify({ answerTo: 'changestream' }));
+    expect(timings).toHaveLength(0);
+    (fake.rn.get() as any)(JSON.stringify({ answerTo: 'timed', return: null }));
+    expect(timings).toHaveLength(1);
+    expect(timings[0]).toMatchObject({ requestId: 'timed', rnSerializeMs: 2, rnDispatchMs: 2 });
+    expect(timings[0].roundTripMs).toBe(timings[0].replyMs - timings[0].sentMs);
+    expect(timings[0].roundTripMs).toBeGreaterThan(timings[0].rnDispatchMs);
+    await channel.close();
+    vi.restoreAllMocks();
+  });
+
   it('returns RxStorage synchronously for createRxDatabase', () => {
     const storage = getRxStorageWorklet({
       runtime: {},
@@ -257,11 +280,13 @@ describe('worklet storage channel', () => {
 
   it('pairs the default channel creator with the default exposure', async () => {
     const fake = createFakeSchedulers('__rxdbReceiveString_rxdb-storage-worklet');
-    const dispose = await fake.worklet.run(() => exposeWorkletRxStorage({ storage: getRxStorageMemory(), scheduleOnRN: fake.scheduleOnRN }));
+    const scheduled = vi.fn(fake.scheduleOnRN);
+    const dispose = await fake.worklet.run(() => exposeWorkletRxStorage({ storage: getRxStorageMemory(), scheduleOnRN: scheduled, receiveOnRN: receiveWorkletMessage }));
     const channel = await createWorkletMessageChannel({ runtime: {}, scheduleOnRuntime: fake.scheduleOnRuntime })();
     const reply = firstValueFrom(channel.messages$);
     channel.send({ requestId: 'default', connectionId: 'default', method: 'custom', params: [] });
     expect((await settle(reply, fake.drain)).answerTo).toBe('default');
+    expect(scheduled.mock.calls[0][0]).toBe(receiveWorkletMessage);
     await settle(channel.close(), fake.drain);
     await fake.worklet.run(dispose);
   });

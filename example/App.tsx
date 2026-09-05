@@ -1,5 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import * as Crypto from 'expo-crypto';
+import { installWorkletFs, getWorkletFs } from 'react-native-worklet-fs';
+import { installWorkletRuntimePolyfills } from 'worklet-opfs';
 import { useEffect, useState } from 'react';
 import {
   Pressable,
@@ -23,6 +25,10 @@ import { runConformanceSmoke, type ConformanceResult } from './src/conformance-s
 const cryptoGlobal = globalThis as any;
 cryptoGlobal.crypto ??= {};
 cryptoGlobal.crypto.subtle ??= { digest: Crypto.digest };
+// RN's Blob cannot accept binary buffers and Android fetch rejects data URLs.
+// Use the same binary-capable polyfill as the worker, in every benchmark mode.
+installWorkletFs();
+installWorkletRuntimePolyfills({ fs: getWorkletFs() });
 
 const MODES = Object.keys(MODE_LABELS) as Mode[];
 
@@ -31,8 +37,10 @@ const metrics: [string, (result: BenchmarkMedian) => number, string][] = [
   ['10 sorted queries', (result) => 'steps' in result ? result.steps.tenQueriesMs : 0, 'ms'],
   ['Find 200 IDs', (result) => 'steps' in result ? result.steps.findByIds200Ms : 0, 'ms'],
   ['Reactive insert 200', (result) => 'steps' in result ? result.steps.reactiveInsert200Ms : 0, 'ms'],
-  ['RN send', (result) => 'rnSendMs' in result ? result.rnSendMs : 0, 'ms'],
-  ['Total blocked', (result) => 'totalBlockedMs' in result.lag ? result.lag.totalBlockedMs : 0, 'ms'],
+  ['RN serialize (median request)', (result) => result.rnSerializeMs, 'ms'],
+  ['RN dispatch (median request)', (result) => result.rnDispatchMs, 'ms'],
+  ['Round trip (median request)', (result) => result.roundTripMs, 'ms'],
+  ['Sum of real lateness', (result) => 'totalBlockedMs' in result.lag ? result.lag.totalBlockedMs : 0, 'ms'],
   ['Max lag', ({ lag }) => lag.maxLagMs, 'ms'],
   ['Ticks > 50 ms', ({ lag }) => lag.ticksOver50Ms, ''],
 ];
@@ -107,11 +115,9 @@ export default function App() {
   const [counter, setCounter] = useState(0);
 
   useEffect(() => {
-    setCounter(0);
-    if (!running?.startsWith('sustained-')) return;
     const timer = setInterval(() => setCounter((value) => value + 1), 16);
     return () => clearInterval(timer);
-  }, [running]);
+  }, []);
 
   const run = async (mode: Mode) => {
     setRunning(mode);
@@ -144,8 +150,8 @@ export default function App() {
           <Text style={styles.eyebrow}>RXDB · WORKLET LAB</Text>
           <Text style={styles.title}>Storage benchmark</Text>
           <Text style={styles.subtitle}>
-            Three samples per mode. Every sample includes 700 writes and a 50-document
-            close/reopen check.
+            Three samples per mode. Short runs: 700 writes and a 50-document reopen
+            check. Sustained runs: four seconds of writes and queries.
           </Text>
         </View>
 
@@ -160,7 +166,7 @@ export default function App() {
                   ? `Complete · ${MODE_LABELS[lastCompleted]}`
                   : 'Idle'}
             </Text>
-            {running?.startsWith('sustained-') ? (
+            {running ? (
               <Text style={styles.counter} testID="sustained-counter">
                 JS counter · {counter}
               </Text>

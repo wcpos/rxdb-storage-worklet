@@ -7,7 +7,7 @@ import {
 } from 'react-native-worklets';
 import { getRxStorageMemory } from 'rxdb/plugins/storage-memory';
 import { getRxStorageAbstractFilesystem } from 'rxdb-premium/plugins/storage-abstract-filesystem';
-import { exposeWorkletRxStorage, getRxStorageWorklet } from 'rxdb-storage-worklet';
+import { exposeWorkletRxStorage, getRxStorageWorklet, receiveWorkletMessage, type RnRequestTiming } from 'rxdb-storage-worklet';
 import { getWorkletFs, installWorkletFs } from 'react-native-worklet-fs';
 import {
   createAbstractFilesystemAdapter,
@@ -25,22 +25,13 @@ const runtimes: Record<WorkletMode, WorkletRuntime> = {
 
 for (const runtime of Object.values(runtimes)) installWorkletFs(runtime);
 
-let rnSendMs = 0;
-
-function measuredScheduleOnRuntime(
-  runtime: unknown,
-  task: (...args: any[]) => void,
-  ...args: any[]
-): void {
-  const started = performance.now();
-  scheduleOnRuntime(runtime as WorkletRuntime, task, ...args);
-  rnSendMs += performance.now() - started;
-}
+let rnRequests: RnRequestTiming[] = [];
 
 function exposeStorage(
   mode: WorkletMode,
   rootDirectory: string,
   ready: (error?: string) => void,
+  receiveOnRN: typeof receiveWorkletMessage,
 ): void {
   'worklet';
   try {
@@ -62,6 +53,7 @@ function exposeStorage(
       storage,
       receiveGlobalName: `__rxdbReceiveString_${mode}`,
       scheduleOnRN,
+      receiveOnRN,
     }).then(() => scheduleOnRN(ready), (error) => scheduleOnRN(ready, String(error)));
   } catch (error) { scheduleOnRN(ready, String(error)); }
 }
@@ -74,16 +66,17 @@ function prepareRuntime(mode: WorkletMode): Promise<WorkletRuntime> {
     const rootDirectory = `${Paths.document.uri.replace(/^file:\/\//, '').replace(/\/$/, '')}/.worklet-opfs`;
     scheduleOnRuntime(runtime, exposeStorage, mode, rootDirectory, (error?: string) => {
       if (error) reject(new Error(error)); else resolve(runtime);
-    });
+    }, receiveWorkletMessage);
   });
 }
 
-export function resetRnSendMs(): void {
-  rnSendMs = 0;
-}
-
-export function getRnSendMs(): number {
-  return rnSendMs;
+export function resetRnTimings(): void { rnRequests = []; }
+export function getRnTimings() {
+  const median = (key: 'rnSerializeMs' | 'rnDispatchMs' | 'roundTripMs') => {
+    const sorted = rnRequests.map(request => request[key]).sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)] ?? 0;
+  };
+  return { rnSerializeMs: median('rnSerializeMs'), rnDispatchMs: median('rnDispatchMs'), roundTripMs: median('roundTripMs'), rnRequests: [...rnRequests] };
 }
 
 export async function createWorkletStorage(mode: WorkletMode) {
@@ -92,7 +85,8 @@ export async function createWorkletStorage(mode: WorkletMode) {
     runtime,
     identifier: mode,
     receiveGlobalName: `__rxdbReceiveString_${mode}`,
-    scheduleOnRuntime: measuredScheduleOnRuntime,
+    scheduleOnRuntime: (runtime, task, ...args) => scheduleOnRuntime(runtime as WorkletRuntime, task, ...args),
+    onTiming: timing => rnRequests.push(timing),
     scheduleOnRN,
   });
 }

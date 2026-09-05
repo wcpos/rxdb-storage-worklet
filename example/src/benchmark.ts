@@ -14,9 +14,10 @@ import {
 } from 'worklet-opfs';
 import {
   createWorkletStorage,
-  getRnSendMs,
-  resetRnSendMs,
+  getRnTimings,
+  resetRnTimings,
 } from './storage-runtime';
+import { lagSampler, samplerIntervalMs, materialisedMissedTicks } from './lag-sampler';
 
 export type StandardMode =
   | 'js-filesystem'
@@ -57,28 +58,43 @@ export type Steps = {
   reactiveInsert200Ms: number;
 };
 
-type StandardBenchmarkResult = {
+type PhaseName = 'setup' | 'inserts' | 'queries' | 'findByIds' | 'reactive' | 'close' | 'persistence';
+function phaseRecorder() {
+  const phases: Record<PhaseName, { startMs: number; endMs: number }[]> = { setup: [], inserts: [], queries: [], findByIds: [], reactive: [], close: [], persistence: [] };
+  return { phases, start(name: PhaseName) {
+    const span = { startMs: performance.now(), endMs: 0 };
+    phases[name].push(span);
+    return () => { span.endMs = performance.now(); };
+  } };
+}
+type Measurement = ReturnType<typeof getRnTimings> & {
+  phases: ReturnType<typeof phaseRecorder>['phases'];
+  samplerIntervalMs: number;
+  materialisedMissedTicks: boolean;
+  queryStrategy: string;
+};
+const measurement = (phases: Measurement['phases']): Measurement => ({
+  ...getRnTimings(), phases, samplerIntervalMs, materialisedMissedTicks,
+  queryStrategy: 'Unique skip per sorted query forces storage execution; findByIds.exec uses RxDB document cache when available',
+});
+
+type StandardBenchmarkResult = Measurement & {
   platform: string;
   mode: StandardMode;
   sample: number;
   steps: Steps;
-  rnSendMs: number;
-  lag: {
-    totalBlockedMs: number;
-    maxLagMs: number;
-    ticksOver50Ms: number;
-    series: number[];
-  };
+  lag: ReturnType<ReturnType<typeof lagSampler>>;
   persistence: { expected: 50; actual: number; pass: boolean };
 };
 
-type SustainedBenchmarkResult = {
+type SustainedBenchmarkResult = Measurement & {
+  durationMs: number;
   platform: string;
   mode: SustainedMode;
   sample: number;
   iterations: number;
   documentsWritten: number;
-  lag: {
+  lag: ReturnType<ReturnType<typeof lagSampler>> & {
     p50LagMs: number;
     p95LagMs: number;
     maxLagMs: number;
@@ -200,31 +216,6 @@ async function database(
   return { db, collection: collections.products as RxCollection<Product> };
 }
 
-function lagSampler(intervalMs = 50, recordEveryTick = false) {
-  const series: number[] = [];
-  let expected = performance.now() + intervalMs;
-  const record = (actual: number) => {
-    do {
-      series.push(Math.max(0, actual - expected));
-      expected += intervalMs;
-    } while (recordEveryTick && actual >= expected);
-    if (!recordEveryTick) expected = actual + intervalMs;
-  };
-  const timer = setInterval(() => record(performance.now()), intervalMs);
-  return () => {
-    clearInterval(timer);
-    if (performance.now() >= expected) {
-      record(performance.now());
-    }
-    return {
-      totalBlockedMs: series.reduce((sum, lag) => sum + lag, 0),
-      maxLagMs: Math.max(0, ...series),
-      ticksOver50Ms: series.filter((lag) => lag > 50).length,
-      series,
-    };
-  };
-}
-
 async function persistenceCheck(mode: Mode, name: string): Promise<number> {
   const first = await database(name, mode);
   await checkedBulkInsert(
@@ -250,27 +241,36 @@ async function runSustainedSample(
   mode: SustainedMode,
   sample: number,
 ): Promise<SustainedBenchmarkResult> {
-  resetRnSendMs();
+  resetRnTimings();
+  const recorder = phaseRecorder();
+  const setupDone = recorder.start('setup');
   const suffix = `${Date.now()}-${sample}`;
   const { db, collection } = await database(`bench-${mode}-${suffix}`, mode);
-  const stopLagSampler = lagSampler(16, true);
+  setupDone();
+  const stopLagSampler = lagSampler();
+  const started = performance.now();
   const ids: string[] = [];
   let iterations = 0;
   let nextDocument = 0;
   let sampled: ReturnType<ReturnType<typeof lagSampler>>;
 
   try {
-    const started = performance.now();
     while (performance.now() - started < 4_000) {
+      const insertsDone = recorder.start('inserts');
       const documents = Array.from({ length: 50 }, () => makeProduct(nextDocument++));
       await checkedBulkInsert(collection, documents);
       ids.push(...documents.map(({ id }) => id));
+      insertsDone();
+      const queriesDone = recorder.start('queries');
       await collection
-        .find({ selector: {}, sort: [{ name: 'asc' }], limit: 50 })
+        .find({ selector: {}, sort: [{ name: 'asc' }], limit: 50, skip: iterations })
         .exec();
+      queriesDone();
+      const idsDone = recorder.start('findByIds');
       await collection.findByIds(
         Array.from({ length: 50 }, () => ids[Math.floor(Math.random() * ids.length)]),
-      );
+      ).exec();
+      idsDone();
       iterations += 1;
     }
     sampled = stopLagSampler();
@@ -278,16 +278,21 @@ async function runSustainedSample(
     stopLagSampler();
     throw error;
   } finally {
+    const closeDone = recorder.start('close');
     await db.close();
+    closeDone();
   }
 
   const result: SustainedBenchmarkResult = {
     platform: Platform.OS,
     mode,
     sample,
+    ...measurement(recorder.phases),
+    durationMs: sampled.endMs - started,
     iterations,
     documentsWritten: iterations * 50,
     lag: {
+      ...sampled,
       p50LagMs: percentile(sampled.series, 0.5),
       p95LagMs: percentile(sampled.series, 0.95),
       maxLagMs: sampled.maxLagMs,
@@ -307,8 +312,10 @@ export async function runBenchmarkSample(
   if (mode === 'sustained-js-filesystem' || mode === 'sustained-worklet-filesystem') {
     return runSustainedSample(mode, sample);
   }
-  resetRnSendMs();
+  resetRnTimings();
   const stopLagSampler = lagSampler();
+  const recorder = phaseRecorder();
+  const setupDone = recorder.start('setup');
   const suffix = `${Date.now()}-${sample}`;
   const documents = Array.from({ length: 700 }, (_, index) => makeProduct(index));
   let steps: Steps;
@@ -316,7 +323,9 @@ export async function runBenchmarkSample(
 
   try {
     const { db, collection } = await database(`bench-${mode}-${suffix}`, mode);
+    setupDone();
     try {
+      let phaseDone = recorder.start('inserts');
       let started = performance.now();
       for (let batch = 0; batch < 5; batch += 1) {
         await checkedBulkInsert(
@@ -325,18 +334,24 @@ export async function runBenchmarkSample(
         );
       }
       const bulkInsert500Ms = performance.now() - started;
+      phaseDone();
+      phaseDone = recorder.start('queries');
 
       started = performance.now();
       for (let query = 0; query < 10; query += 1) {
         await collection
-          .find({ selector: {}, sort: [{ name: 'asc' }], limit: 50 })
+          .find({ selector: {}, sort: [{ name: 'asc' }], limit: 50, skip: query })
           .exec();
       }
       const tenQueriesMs = performance.now() - started;
+      phaseDone();
+      phaseDone = recorder.start('findByIds');
 
       started = performance.now();
-      await collection.findByIds(documents.slice(0, 200).map(({ id }) => id));
+      await collection.findByIds(documents.slice(0, 200).map(({ id }) => id)).exec();
       const findByIds200Ms = performance.now() - started;
+      phaseDone();
+      phaseDone = recorder.start('reactive');
 
       const reactiveQuery = collection.find({
         selector: {},
@@ -365,6 +380,7 @@ export async function runBenchmarkSample(
       ]);
       const reactiveInsert200Ms = performance.now() - started;
       subscription.unsubscribe();
+      phaseDone();
       steps = {
         bulkInsert500Ms,
         tenQueriesMs,
@@ -372,21 +388,26 @@ export async function runBenchmarkSample(
         reactiveInsert200Ms,
       };
     } finally {
+      const closeDone = recorder.start('close');
       await db.close();
+      closeDone();
     }
+    const persistenceDone = recorder.start('persistence');
     persistenceActual = await persistenceCheck(mode, `persist-${mode}-${suffix}`);
+    persistenceDone();
   } catch (error) {
     stopLagSampler();
     throw error;
   }
 
+  const sampled = stopLagSampler();
   const result: BenchmarkResult = {
     platform: Platform.OS,
     mode,
     sample,
     steps,
-    rnSendMs: mode.startsWith('worklet') ? getRnSendMs() : 0,
-    lag: stopLagSampler(),
+    ...measurement(recorder.phases),
+    lag: sampled,
     persistence: {
       expected: 50,
       actual: persistenceActual,
@@ -412,6 +433,7 @@ export function medianResult(samples: BenchmarkResult[]): BenchmarkMedian {
       (left, right) => left.lag.p95LagMs - right.lag.p95LagMs,
     )[1];
     return {
+      ...medianSample,
       platform: medianSample.platform,
       mode: medianSample.mode,
       medianSample: medianSample.sample,
@@ -420,6 +442,7 @@ export function medianResult(samples: BenchmarkResult[]): BenchmarkMedian {
         sustained.map(({ documentsWritten }) => documentsWritten),
       ),
       lag: {
+        ...medianSample.lag,
         p50LagMs: median(sustained.map(({ lag }) => lag.p50LagMs)),
         p95LagMs: median(sustained.map(({ lag }) => lag.p95LagMs)),
         maxLagMs: median(sustained.map(({ lag }) => lag.maxLagMs)),
@@ -432,6 +455,7 @@ export function medianResult(samples: BenchmarkResult[]): BenchmarkMedian {
   const standard = samples as StandardBenchmarkResult[];
   const medianSample = [...standard].sort((left, right) => elapsed(left) - elapsed(right))[1];
   return {
+    ...medianSample,
     platform: medianSample.platform,
     mode: medianSample.mode,
     medianSample: medianSample.sample,
@@ -441,8 +465,11 @@ export function medianResult(samples: BenchmarkResult[]): BenchmarkMedian {
       findByIds200Ms: median(standard.map(({ steps }) => steps.findByIds200Ms)),
       reactiveInsert200Ms: median(standard.map(({ steps }) => steps.reactiveInsert200Ms)),
     },
-    rnSendMs: median(standard.map(({ rnSendMs }) => rnSendMs)),
+    rnSerializeMs: median(standard.map(item => item.rnSerializeMs)),
+    rnDispatchMs: median(standard.map(item => item.rnDispatchMs)),
+    roundTripMs: median(standard.map(item => item.roundTripMs)),
     lag: {
+      ...medianSample.lag,
       totalBlockedMs: median(standard.map(({ lag }) => lag.totalBlockedMs)),
       maxLagMs: median(standard.map(({ lag }) => lag.maxLagMs)),
       ticksOver50Ms: median(standard.map(({ lag }) => lag.ticksOver50Ms)),

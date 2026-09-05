@@ -34,6 +34,11 @@ function deliverToGlobal(name: string, message: string): void {
   if (typeof receive === 'function') (receive as (value: string) => void)(message);
 }
 
+// Pass this RN-defined reference into a bundle-mode worker initializer.
+export function receiveWorkletMessage(name: string, serialized: string): void {
+  deliverToGlobal(name, serialized);
+}
+
 function blobAsBase64(blob: Blob): Promise<string> {
   if (typeof blob.arrayBuffer === 'function') return blobToBase64String(blob);
   return new Promise((resolve, reject) => {
@@ -44,7 +49,7 @@ function blobAsBase64(blob: Blob): Promise<string> {
   });
 }
 
-async function serializeMessage(message: any): Promise<string> {
+async function serializeMessage(message: any, timing?: { rnSerializeMs: number }): Promise<string> {
   'worklet';
   const copy = clone(message);
   if (copy.method === 'bulkWrite' && Array.isArray(copy.params?.[0])) {
@@ -56,7 +61,10 @@ async function serializeMessage(message: any): Promise<string> {
   } else if (copy.method === 'getAttachmentData' && copy.return instanceof Blob) {
     copy.return = await blobAsBase64(copy.return);
   }
-  return JSON.stringify(copy);
+  const started = timing ? performance.now() : 0;
+  const serialized = JSON.stringify(copy);
+  if (timing) timing.rnSerializeMs = performance.now() - started;
+  return serialized;
 }
 
 function deserializeMessage(serialized: string): any {
@@ -82,11 +90,21 @@ function loadWorklets(): WorkletsModule {
   return require('react-native-worklets') as WorkletsModule;
 }
 
+export type RnRequestTiming = {
+  requestId: string;
+  sentMs: number;
+  replyMs: number;
+  rnSerializeMs: number;
+  rnDispatchMs: number;
+  roundTripMs: number;
+};
+
 export function createWorkletMessageChannel(options: {
   runtime: unknown;
   scheduleOnRuntime?: ScheduleOnRuntime;
   scheduleOnRN?: ScheduleOnRN;
   receiveGlobalName?: string;
+  onTiming?: (timing: RnRequestTiming) => void;
 }) {
   const receiveGlobalName = options.receiveGlobalName ?? `${DEFAULT_RECEIVE_GLOBAL}_${DEFAULT_IDENTIFIER}`;
   let loadedWorklets: WorkletsModule | undefined;
@@ -95,6 +113,7 @@ export function createWorkletMessageChannel(options: {
   return async () => {
     const messages$ = new Subject<any>();
     const pending = new Set<string>();
+    const timings = new Map<string, Omit<RnRequestTiming, 'replyMs' | 'roundTripMs'>>();
     let drained: (() => void) | undefined;
     let closing: Promise<void> | undefined;
     let sendQueue = Promise.resolve();
@@ -104,7 +123,13 @@ export function createWorkletMessageChannel(options: {
       if (!pending.size) drained?.();
     };
     const receive: ReceiveFunction = (serialized) => {
+      const replyMs = options.onTiming ? performance.now() : 0;
       const message = JSON.parse(serialized);
+      const timing = timings.get(message.answerTo);
+      if (timing) {
+        timings.delete(message.answerTo);
+        options.onTiming?.({ ...timing, replyMs, roundTripMs: replyMs - timing.sentMs });
+      }
       void Promise.resolve().then(() => deserializeMessage(serialized)).then(accept, (error) => {
         accept({ ...message, return: undefined, error: { message: String(error) } });
       });
@@ -117,7 +142,15 @@ export function createWorkletMessageChannel(options: {
         pending.add(message.requestId);
         sendQueue = sendQueue.then(async () => {
           try {
-            scheduleOnRuntime()(options.runtime, deliverToGlobal, receiveGlobalName, await serializeMessage(message));
+            const timing = options.onTiming ? { requestId: message.requestId, sentMs: performance.now(), rnSerializeMs: 0, rnDispatchMs: 0 } : undefined;
+            const serialized = await serializeMessage(message, timing);
+            const schedule = scheduleOnRuntime();
+            const dispatchStart = timing ? performance.now() : 0;
+            schedule(options.runtime, deliverToGlobal, receiveGlobalName, serialized);
+            if (timing) {
+              timing.rnDispatchMs = performance.now() - dispatchStart;
+              timings.set(message.requestId, timing);
+            }
           } catch (error) { accept(createErrorAnswer(message, error as Error)); }
         });
       },
@@ -141,6 +174,7 @@ export function getRxStorageWorklet(options: {
   receiveGlobalName?: string;
   scheduleOnRuntime?: ScheduleOnRuntime;
   scheduleOnRN?: ScheduleOnRN;
+  onTiming?: (timing: RnRequestTiming) => void;
 }): RxStorage<any, any> {
   return getRxStorageRemote({
     identifier: options.identifier ?? DEFAULT_IDENTIFIER,
@@ -150,6 +184,7 @@ export function getRxStorageWorklet(options: {
       receiveGlobalName: options.receiveGlobalName ?? `${DEFAULT_RECEIVE_GLOBAL}_${options.identifier ?? DEFAULT_IDENTIFIER}`,
       scheduleOnRuntime: options.scheduleOnRuntime,
       scheduleOnRN: options.scheduleOnRN,
+      onTiming: options.onTiming,
     }),
   });
 }
@@ -159,6 +194,7 @@ export async function exposeWorkletRxStorage(options: {
   identifier?: string;
   receiveGlobalName?: string;
   scheduleOnRN?: ScheduleOnRN;
+  receiveOnRN?: typeof receiveWorkletMessage;
 }): Promise<() => Promise<void>> {
   const receiveGlobalName = options.receiveGlobalName ?? `${DEFAULT_RECEIVE_GLOBAL}_${options.identifier ?? DEFAULT_IDENTIFIER}`;
   const scheduleOnRN = options.scheduleOnRN ?? loadWorklets().scheduleOnRN;
@@ -170,7 +206,7 @@ export async function exposeWorkletRxStorage(options: {
     void serializeMessage(message).catch((error) => JSON.stringify({
       ...message, return: undefined, error: { message: String(error) },
     })).then((serialized) => {
-      scheduleOnRN(deliverToGlobal, receiveGlobalName, serialized);
+      scheduleOnRN(options.receiveOnRN ?? deliverToGlobal, receiveGlobalName, serialized);
       if (message.answerTo !== 'changestream' && --pending === 0) drained?.();
     });
   };

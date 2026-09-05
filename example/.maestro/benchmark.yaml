@@ -92,3 +92,4 @@ appId: com.wcpos.rxdbstorageworklet
     element:
       id: results-sustained-worklet-filesystem
     direction: DOWN
+    timeout: 60000
