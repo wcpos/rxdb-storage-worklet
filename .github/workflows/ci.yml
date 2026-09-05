@@ -108,7 +108,7 @@ jobs:
           xcrun simctl install booted /tmp/ios-build/Build/Products/Debug-iphonesimulator/RxDBWorkletBench.app
           npx expo start --dev-client > /tmp/metro.log 2>&1 &
           curl --fail --retry 60 --retry-connrefused --retry-delay 1 http://localhost:8081/status
-          curl --fail --max-time 180 'http://localhost:8081/index.bundle?platform=ios&dev=true&minify=false' -o /dev/null
+          curl --fail --max-time 180 'http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true&minify=false' -o /dev/null
       - if: env.HAS_RXDB_PREMIUM == 'true'
         working-directory: example
         run: |
@@ -189,7 +189,7 @@ jobs:
             pnpm --dir example exec expo start --dev-client > /tmp/metro.log 2>&1 &
             adb reverse tcp:8081 tcp:8081
             curl --fail --retry 60 --retry-connrefused --retry-delay 1 http://localhost:8081/status
-            curl --fail --max-time 180 'http://localhost:8081/index.bundle?platform=android&dev=true&minify=false' -o /dev/null
+            curl --fail --max-time 180 'http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=android&dev=true&minify=false' -o /dev/null
             maestro test example/.maestro/conformance-smoke.yaml --format junit --output /tmp/maestro/conformance.xml --debug-output /tmp/maestro/conformance
             maestro test example/.maestro/benchmark.yaml --format junit --output /tmp/maestro/benchmark.xml --debug-output /tmp/maestro/benchmark
             node example/scripts/collect-results.mjs /tmp/metro.log android
