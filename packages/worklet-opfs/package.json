@@ -27,6 +27,6 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "react-native-worklet-fs": "workspace:^"
+    "react-native-worklet-fs": "^0.1.0"
   }
 }
