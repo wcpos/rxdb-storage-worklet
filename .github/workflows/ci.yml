@@ -40,6 +40,9 @@ jobs:
           RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
         run: |
           set -o pipefail
+          printf "token shape: len=%s starts0x=%s hexonly=%s\n" "${#RXDB_PREMIUM}" "$([[ "$RXDB_PREMIUM" == 0x* ]] && echo yes || echo no)" "$(printf %s "$RXDB_PREMIUM" | tr -d '"''''' ' | grep -Eq '^(0x)?[0-9a-fA-F]+$' && echo yes || echo no)"
+          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > .env
+          unset RXDB_PREMIUM
           node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
           node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
@@ -72,6 +75,9 @@ jobs:
           RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
         run: |
           set -o pipefail
+          printf "token shape: len=%s starts0x=%s hexonly=%s\n" "${#RXDB_PREMIUM}" "$([[ "$RXDB_PREMIUM" == 0x* ]] && echo yes || echo no)" "$(printf %s "$RXDB_PREMIUM" | tr -d '"''''' ' | grep -Eq '^(0x)?[0-9a-fA-F]+$' && echo yes || echo no)"
+          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > .env
+          unset RXDB_PREMIUM
           node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
           node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
@@ -133,6 +139,9 @@ jobs:
           RXDB_PREMIUM: ${{ secrets.RXDB_PREMIUM }}
         run: |
           set -o pipefail
+          printf "token shape: len=%s starts0x=%s hexonly=%s\n" "${#RXDB_PREMIUM}" "$([[ "$RXDB_PREMIUM" == 0x* ]] && echo yes || echo no)" "$(printf %s "$RXDB_PREMIUM" | tr -d '"''''' ' | grep -Eq '^(0x)?[0-9a-fA-F]+$' && echo yes || echo no)"
+          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > .env
+          unset RXDB_PREMIUM
           node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
           node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
