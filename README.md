@@ -1,4 +1,4 @@
-# rxdb-storage-worklet
+# @wcpos/rxdb-storage-worklet
 
 Run RxDB's filesystem storage on a [react-native-worklets](https://docs.swmansion.com/react-native-worklets/) Worker Runtime, so the React Native JS thread never does storage work.
 
@@ -70,40 +70,40 @@ React Native JS thread                      Worker Runtime (react-native-worklet
 ┌──────────────────────────┐   JSON string   ┌────────────────────────────────────┐
 │ RxDB core                │  per message    │ exposeWorkletRxStorage             │
 │ getRxStorageWorklet() ───┼────────────────▶│  └ storage-abstract-filesystem     │
-│  (rxdb storage-remote)   │◀────────────────┼     └ worklet-opfs (OPFS-shaped)   │
-└──────────────────────────┘  scheduleOnRN   │        └ react-native-worklet-fs   │
+│  (rxdb storage-remote)   │◀────────────────┼     └ @wcpos/worklet-opfs (OPFS-shaped)   │
+└──────────────────────────┘  scheduleOnRN   │        └ @wcpos/react-native-worklet-fs   │
                                              │           (C++ JSI over POSIX)     │
                                              └────────────────────────────────────┘
 ```
 
 - **One JSON string per message.** Measured against deep-copying document graphs with `createSerializable`, the string envelope cut the RN-thread cost of a 500-document write from 210 ms to 30 ms. Attachments cross as base64.
-- **A positional file primitive.** `react-native-worklet-fs` is a pure C++ TurboModule that installs `open / readAt / writeAt / truncate / size / flush / close / mkdir / readdir / remove / exists` plus UTF-8 helpers into the worker runtime, under the runtime's own lock. Reads and writes loop to the full range; no base64, no string round trips for file bytes.
-- **An OPFS-shaped layer.** `worklet-opfs` mirrors expo-opfs's surface and semantics so rxdb-premium's abstract filesystem storage runs on it byte for byte. It also polyfills what a worker runtime lacks: `DOMException`, `TextEncoder`/`TextDecoder` (with `fatal` and BOM handling), `Blob`, and `crypto.subtle.digest` for SHA-256.
+- **A positional file primitive.** `@wcpos/react-native-worklet-fs` is a pure C++ TurboModule that installs `open / readAt / writeAt / truncate / size / flush / close / mkdir / readdir / remove / exists` plus UTF-8 helpers into the worker runtime, under the runtime's own lock. Reads and writes loop to the full range; no base64, no string round trips for file bytes.
+- **An OPFS-shaped layer.** `@wcpos/worklet-opfs` mirrors expo-opfs's surface and semantics so rxdb-premium's abstract filesystem storage runs on it byte for byte. It also polyfills what a worker runtime lacks: `DOMException`, `TextEncoder`/`TextDecoder` (with `fatal` and BOM handling), `Blob`, and `crypto.subtle.digest` for SHA-256.
 
 ## Packages
 
 | Package | What it is |
 |---|---|
-| `rxdb-storage-worklet` | `getRxStorageWorklet()` for the RN side, `exposeWorkletRxStorage()` for the worker side. The worklet analogue of RxDB's `storage-worker` plugin. |
-| `worklet-opfs` | OPFS-shaped file API over `react-native-worklet-fs`, the runtime polyfills, and the adapter and lock rxdb-premium's abstract filesystem expects. Runs in Node too, which is how the conformance suite uses it. |
-| `react-native-worklet-fs` | The native primitive: C++ JSI file functions installed into a worklet runtime or the RN runtime. Ships a Node implementation under `react-native-worklet-fs/node`. |
+| `@wcpos/rxdb-storage-worklet` | `getRxStorageWorklet()` for the RN side, `exposeWorkletRxStorage()` for the worker side. The worklet analogue of RxDB's `storage-worker` plugin. |
+| `@wcpos/worklet-opfs` | OPFS-shaped file API over `@wcpos/react-native-worklet-fs`, the runtime polyfills, and the adapter and lock rxdb-premium's abstract filesystem expects. Runs in Node too, which is how the conformance suite uses it. |
+| `@wcpos/react-native-worklet-fs` | The native primitive: C++ JSI file functions installed into a worklet runtime or the RN runtime. Ships a Node implementation under `@wcpos/react-native-worklet-fs/node`. |
 
 ## Install
 
 ```sh
 npx expo install react-native-worklets react-native-reanimated
-pnpm add rxdb-storage-worklet worklet-opfs react-native-worklet-fs
+pnpm add @wcpos/rxdb-storage-worklet @wcpos/worklet-opfs @wcpos/react-native-worklet-fs
 pnpm add rxdb rxdb-premium   # the filesystem engine is rxdb-premium's storage-abstract-filesystem
 npx expo prebuild
 ```
 
-Requirements: Expo SDK 57 / React Native 0.86 with the New Architecture and Hermes, `react-native-worklets` 0.11.x, RxDB and RxDB Premium 17.4.x. `react-native-worklet-fs` is a pure C++ TurboModule with a codegen spec; autolinking picks it up on both platforms without patching React Native.
+Requirements: Expo SDK 57 / React Native 0.86 with the New Architecture and Hermes, `react-native-worklets` 0.11.x, RxDB and RxDB Premium 17.4.x. `@wcpos/react-native-worklet-fs` is a pure C++ TurboModule with a codegen spec; autolinking picks it up on both platforms without patching React Native.
 
 ### Bundle Mode
 
 The worker runtime runs a whole library (RxDB, rxjs, this package), which react-native-worklets only supports in [Bundle Mode](https://docs.swmansion.com/react-native-worklets/docs/bundleMode/). Three things to set up, all shown in [`example/`](example/):
 
-1. **Babel**: the worklets plugin with `bundleMode: true` and every package the worker imports listed under `importForwarding.moduleNames` (`rxdb`, `rxjs`, the `rxdb/plugins/*` you use, `rxdb-premium/plugins/storage-abstract-filesystem`, `rxdb-storage-worklet`, `worklet-opfs`, `react-native-worklet-fs`), plus `relativePaths` for your own source folders the worker touches.
+1. **Babel**: the worklets plugin with `bundleMode: true` and every package the worker imports listed under `importForwarding.moduleNames` (`rxdb`, `rxjs`, the `rxdb/plugins/*` you use, `rxdb-premium/plugins/storage-abstract-filesystem`, `@wcpos/rxdb-storage-worklet`, `@wcpos/worklet-opfs`, `@wcpos/react-native-worklet-fs`), plus `relativePaths` for your own source folders the worker touches.
 2. **Metro**: wrap your config with `getBundleModeMetroConfig`. If you use uniwind, its wrapper goes outermost.
 3. **Patches**: Bundle Mode needs the `metro` and `metro-runtime` patches from the worklets repository, and until [reanimated #9817](https://github.com/software-mansion/react-native-reanimated/issues/9817) is merged, a one-file patch to `react-native-worklets` so its `react-native` shim survives other Metro resolvers. All three are in [`example/patches/`](example/patches/) for `patch-package`.
 
@@ -115,12 +115,12 @@ The worker side is a worklet that builds the storage and exposes it; the RN side
 // storage.ts (React Native side)
 import { createWorkletRuntime, scheduleOnRuntime, scheduleOnRN } from 'react-native-worklets';
 import { getRxStorageAbstractFilesystem } from 'rxdb-premium/plugins/storage-abstract-filesystem';
-import { getRxStorageWorklet, exposeWorkletRxStorage, receiveWorkletMessage } from 'rxdb-storage-worklet';
-import { getWorkletFs, installWorkletFs } from 'react-native-worklet-fs';
+import { getRxStorageWorklet, exposeWorkletRxStorage, receiveWorkletMessage } from '@wcpos/rxdb-storage-worklet';
+import { getWorkletFs, installWorkletFs } from '@wcpos/react-native-worklet-fs';
 import {
   createAbstractFilesystemAdapter, createPromiseQueueLock,
   createWorkletOpfs, installWorkletRuntimePolyfills,
-} from 'worklet-opfs';
+} from '@wcpos/worklet-opfs';
 
 const runtime = createWorkletRuntime({ name: 'rxdb-storage' });
 installWorkletFs(runtime); // native file API into the worker runtime
@@ -152,7 +152,7 @@ Every layer has its own proof, and the RxDB suite is the one that counts. CI run
 | Level | What runs | Command |
 |---|---|---|
 | Unit (53 tests) | OPFS semantics against the Node backend: name validation, DOMException contract, cursor, zero-pad past EOF, truncate, one handle per path, short reads and writes, NUL rejection; polyfills including UTF-8 `fatal`/BOM and SHA-256 vectors; the channel: an RxDB CRUD plus subscription round trip through fake runtimes asserting string-only messages, two storages on two runtimes, close and reopen through the same storage, shutdown ordering, error surfacing. | `pnpm test` |
-| RxDB conformance (57 × 2) | RxDB's own `rx-storage-implementations` suite at tag 17.4.0, run through this library's real JSON channel with fake schedulers, against the filesystem engine over `worklet-opfs` and against RxDB's memory storage as the control. Sixteen real decoding bugs were found and fixed here before release. | `pnpm conformance` |
+| RxDB conformance (57 × 2) | RxDB's own `rx-storage-implementations` suite at tag 17.4.0, run through this library's real JSON channel with fake schedulers, against the filesystem engine over `@wcpos/worklet-opfs` and against RxDB's memory storage as the control. Sixteen real decoding bugs were found and fixed here before release. | `pnpm conformance` |
 | On device | Eight storage scenarios on the worker runtime through the public API (bulk writes and conflicts, indexed and non-indexed sort, count, `findDocumentsById`, change stream and checkpoint, attachments, cleanup, close and reopen), plus the six-mode benchmark flow. Maestro, iOS simulator and Android emulator. | `example/.maestro/*.yaml` |
 | Independent review | A second-model read-only review before merge; its findings and their fixes are in [`docs/reports/`](docs/reports/). | |
 
@@ -177,7 +177,7 @@ The filesystem engine is rxdb-premium's; this library changes where it runs, not
 This library is being dogfooded in the WCPOS app first. Once it has run on real devices and real stores for a while and the round-trip cost is understood, three upstream conversations follow, in this order:
 
 - **Software Mansion**: the fix for reanimated #9817 (Bundle Mode next to Metro resolvers that remap `react-native`), carried here as a patch until then.
-- **RxDB**: `rxdb-storage-worklet` as `plugins/storage-worklet` beside `storage-worker`, and `worklet-opfs` as a sibling of `expo-opfs`; the conformance run in this repo is the evidence.
+- **RxDB**: `@wcpos/rxdb-storage-worklet` as `plugins/storage-worklet` beside `storage-worker`, and `@wcpos/worklet-opfs` as a sibling of `expo-opfs`; the conformance run in this repo is the evidence.
 - **React Native**: Android autolinking only emits a pure C++ TurboModule provider when the package also has a codegen `libraryName`; the documented `cxxModule*` keys alone are skipped. This library ships the codegen spec to work within that.
 
 Issues and PRs are welcome. Run `pnpm test`, `pnpm typecheck` and `pnpm conformance` before opening one.

@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import * as Crypto from 'expo-crypto';
-import { installWorkletFs, getWorkletFs } from 'react-native-worklet-fs';
-import { installWorkletRuntimePolyfills } from 'worklet-opfs';
+import { installWorkletFs, getWorkletFs } from '@wcpos/react-native-worklet-fs';
+import { installWorkletRuntimePolyfills } from '@wcpos/worklet-opfs';
 import { useEffect, useState } from 'react';
 import {
   Pressable,

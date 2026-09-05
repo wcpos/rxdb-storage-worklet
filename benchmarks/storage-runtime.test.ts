@@ -12,13 +12,13 @@ vi.mock('../example/node_modules/react-native-worklets', () => ({
 vi.mock('../example/node_modules/rxdb/plugins/storage-memory', () => ({ getRxStorageMemory: vi.fn() }));
 vi.mock('rxdb-premium/plugins/storage-abstract-filesystem', () => ({ getRxStorageAbstractFilesystem: vi.fn() }));
 vi.mock('../example/node_modules/rxdb-premium/plugins/storage-abstract-filesystem', () => ({ getRxStorageAbstractFilesystem: vi.fn() }));
-vi.mock('../example/node_modules/rxdb-storage-worklet', () => ({
+vi.mock('../example/node_modules/@wcpos/rxdb-storage-worklet', () => ({
   exposeWorkletRxStorage: vi.fn(),
   getRxStorageWorklet: ({ runtime }: { runtime: unknown }) => ({ runtime }),
   receiveWorkletMessage: vi.fn(),
 }));
-vi.mock('../example/node_modules/react-native-worklet-fs', () => ({ getWorkletFs: vi.fn(), installWorkletFs: vi.fn() }));
-vi.mock('../example/node_modules/worklet-opfs', () => ({
+vi.mock('../example/node_modules/@wcpos/react-native-worklet-fs', () => ({ getWorkletFs: vi.fn(), installWorkletFs: vi.fn() }));
+vi.mock('../example/node_modules/@wcpos/worklet-opfs', () => ({
   createAbstractFilesystemAdapter: vi.fn(),
   createPromiseQueueLock: vi.fn(),
   createWorkletOpfs: vi.fn(),

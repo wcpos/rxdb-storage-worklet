@@ -1,4 +1,4 @@
-import { getWorkletFs, type WorkletFs } from 'react-native-worklet-fs';
+import { getWorkletFs, type WorkletFs } from '@wcpos/react-native-worklet-fs';
 
 type WorkletBuffer = ArrayBuffer | ArrayBufferView;
 type HandleOptions = { create?: boolean };

@@ -11,7 +11,7 @@ import { getRxStorageAbstractFilesystem } from 'rxdb-premium/plugins/storage-abs
 import {
   createAbstractFilesystemAdapter,
   createPromiseQueueLock,
-} from 'worklet-opfs';
+} from '@wcpos/worklet-opfs';
 import {
   createWorkletStorage,
   getRnTimings,

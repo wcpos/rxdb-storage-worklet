@@ -2,15 +2,15 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { getRxStorageMemory } from '../../plugins/storage-memory/index.mjs';
-import { exposeWorkletRxStorage, getRxStorageWorklet } from '../../../../packages/rxdb-storage-worklet/lib/index.js';
+import { exposeWorkletRxStorage, getRxStorageWorklet } from '../../../../example/node_modules/@wcpos/rxdb-storage-worklet/lib/index.js';
 import { createFakeSchedulers } from './worklet-fake-schedulers.js';
 import { getRxStorageAbstractFilesystem } from 'rxdb-premium/plugins/storage-abstract-filesystem';
-import { createNodeWorkletFs } from '../../../../packages/react-native-worklet-fs/lib/node.js';
+import { createNodeWorkletFs } from '../../../../example/node_modules/@wcpos/react-native-worklet-fs/lib/node.js';
 import {
   createAbstractFilesystemAdapter,
   createPromiseQueueLock,
   createWorkletOpfs,
-} from '../../../../packages/worklet-opfs/lib/index.js';
+} from '../../../../example/node_modules/@wcpos/worklet-opfs/lib/index.js';
 
 const tempDirectory = mkdtempSync(path.join(tmpdir(), 'rxdb-worklet-conformance-'));
 const fs = createNodeWorkletFs(tempDirectory);

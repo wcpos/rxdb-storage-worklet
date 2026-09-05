@@ -19,14 +19,14 @@
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-reanimated": "~4.5.0",
-    "react-native-worklet-fs": "workspace:*",
+    "@wcpos/react-native-worklet-fs": "workspace:*",
     "react-native-worklets": "0.11.4",
     "rxdb": "17.4.0",
     "rxdb-premium": "17.4.0",
-    "rxdb-storage-worklet": "workspace:*",
+    "@wcpos/rxdb-storage-worklet": "workspace:*",
     "rxjs": "7.8.2",
     "uniwind": "1.11.0",
-    "worklet-opfs": "workspace:*"
+    "@wcpos/worklet-opfs": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

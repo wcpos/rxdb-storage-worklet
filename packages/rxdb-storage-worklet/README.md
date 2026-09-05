@@ -1,4 +1,4 @@
-# rxdb-storage-worklet
+# @wcpos/rxdb-storage-worklet
 
 JSON-only RxDB remote-storage messaging across a React Native Worker Runtime.
 

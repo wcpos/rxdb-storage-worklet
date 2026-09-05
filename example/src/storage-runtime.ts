@@ -7,14 +7,14 @@ import {
 } from 'react-native-worklets';
 import { getRxStorageMemory } from 'rxdb/plugins/storage-memory';
 import { getRxStorageAbstractFilesystem } from 'rxdb-premium/plugins/storage-abstract-filesystem';
-import { exposeWorkletRxStorage, getRxStorageWorklet, receiveWorkletMessage, type RnRequestTiming } from 'rxdb-storage-worklet';
-import { getWorkletFs, installWorkletFs } from 'react-native-worklet-fs';
+import { exposeWorkletRxStorage, getRxStorageWorklet, receiveWorkletMessage, type RnRequestTiming } from '@wcpos/rxdb-storage-worklet';
+import { getWorkletFs, installWorkletFs } from '@wcpos/react-native-worklet-fs';
 import {
   createAbstractFilesystemAdapter,
   createPromiseQueueLock,
   createWorkletOpfs,
   installWorkletRuntimePolyfills,
-} from 'worklet-opfs';
+} from '@wcpos/worklet-opfs';
 
 type WorkletMode = 'worklet-filesystem' | 'worklet-memory';
 

@@ -23,6 +23,15 @@ importers:
 
   example:
     dependencies:
+      '@wcpos/react-native-worklet-fs':
+        specifier: workspace:*
+        version: link:../packages/react-native-worklet-fs
+      '@wcpos/rxdb-storage-worklet':
+        specifier: workspace:*
+        version: link:../packages/rxdb-storage-worklet
+      '@wcpos/worklet-opfs':
+        specifier: workspace:*
+        version: link:../packages/worklet-opfs
       expo:
         specifier: ~57.0.20
         version: 57.0.20(@babel/core@7.29.7(supports-color@8.1.1))(@expo/dom-webview@57.0.1)(react-native-worklets@0.11.4(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1)(typescript@6.0.3)
@@ -47,9 +56,6 @@ importers:
       react-native-reanimated:
         specifier: ~4.5.0
         version: 4.5.5(react-native-worklets@0.11.4(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
-      react-native-worklet-fs:
-        specifier: workspace:*
-        version: link:../packages/react-native-worklet-fs
       react-native-worklets:
         specifier: 0.11.4
         version: 0.11.4(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1)
@@ -59,18 +65,12 @@ importers:
       rxdb-premium:
         specifier: 17.4.0
         version: 17.4.0(rxdb@17.4.0(react@19.2.3)(rxjs@7.8.2)(supports-color@8.1.1))(rxjs@7.8.2)
-      rxdb-storage-worklet:
-        specifier: workspace:*
-        version: link:../packages/rxdb-storage-worklet
       rxjs:
         specifier: 7.8.2
         version: 7.8.2
       uniwind:
         specifier: 1.11.0
         version: 1.11.0(@expo/metro-config@57.0.12(expo@57.0.20)(supports-color@8.1.1)(typescript@6.0.3))(metro-cache@0.87.0(supports-color@8.1.1))(metro-transform-worker@0.87.0(supports-color@8.1.1))(metro@0.84.5(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(tailwindcss@4.3.2)
-      worklet-opfs:
-        specifier: workspace:*
-        version: link:../packages/worklet-opfs
     devDependencies:
       '@types/react':
         specifier: ~19.2.2
@@ -115,7 +115,7 @@ importers:
 
   packages/worklet-opfs:
     devDependencies:
-      react-native-worklet-fs:
+      '@wcpos/react-native-worklet-fs':
         specifier: workspace:*
         version: link:../react-native-worklet-fs
 

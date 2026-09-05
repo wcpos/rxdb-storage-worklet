@@ -51,7 +51,7 @@ async function prepareCheckout() {
   run('pnpm', ['build']);
   await cp(path.join(root, 'conformance/storage-entry.ts'), path.join(checkout, 'test/unit/worklet-opfs-storage.ts'));
   const schedulers = await readFile(path.join(root, 'packages/rxdb-storage-worklet/test/fake-schedulers.ts'), 'utf8');
-  await writeFile(path.join(checkout, 'test/unit/worklet-fake-schedulers.ts'), schedulers.replace('../src/index.js', '../../../../packages/rxdb-storage-worklet/lib/index.js'));
+  await writeFile(path.join(checkout, 'test/unit/worklet-fake-schedulers.ts'), schedulers.replace('../src/index.js', '../../../../example/node_modules/@wcpos/rxdb-storage-worklet/lib/index.js'));
   await cp(path.join(root, 'conformance/binary-attachments.ts'), path.join(checkout, 'test/unit/worklet-binary-attachments.test.ts'));
   const configPath = path.join(checkout, 'test/unit/config.ts');
   let config = await readFile(configPath, 'utf8');

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createNodeWorkletFs } from 'react-native-worklet-fs/node';
+import { createNodeWorkletFs } from '@wcpos/react-native-worklet-fs/node';
 import {
   createAbstractFilesystemAdapter,
   createPromiseQueueLock,

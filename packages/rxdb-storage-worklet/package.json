@@ -1,6 +1,6 @@
 {
-  "name": "rxdb-storage-worklet",
-  "version": "0.1.0",
+  "name": "@wcpos/rxdb-storage-worklet",
+  "version": "0.1.1",
   "license": "MIT",
   "type": "module",
   "react-native": "./src/index.ts",
@@ -40,5 +40,8 @@
   },
   "devDependencies": {
     "rxdb": "17.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

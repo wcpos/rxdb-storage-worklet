@@ -1,6 +1,6 @@
 {
-  "name": "worklet-opfs",
-  "version": "0.1.0",
+  "name": "@wcpos/worklet-opfs",
+  "version": "0.1.1",
   "license": "MIT",
   "type": "module",
   "react-native": "./src/index.ts",
@@ -27,9 +27,12 @@
     "prepack": "pnpm build"
   },
   "peerDependencies": {
-    "react-native-worklet-fs": "^0.1.0"
+    "@wcpos/react-native-worklet-fs": "^0.1.1"
   },
   "devDependencies": {
-    "react-native-worklet-fs": "workspace:*"
+    "@wcpos/react-native-worklet-fs": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
