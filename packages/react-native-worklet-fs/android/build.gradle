@@ -1,0 +1,16 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.facebook.react'
+
+android {
+  namespace 'com.workletfs'
+  compileSdk rootProject.ext.compileSdkVersion
+
+  defaultConfig {
+    minSdkVersion rootProject.ext.minSdkVersion
+    targetSdkVersion rootProject.ext.targetSdkVersion
+  }
+}
+
+dependencies {
+  implementation 'com.facebook.react:react-android'
+}

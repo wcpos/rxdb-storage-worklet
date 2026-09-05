@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "RxDB Worklet Bench",
+    "slug": "rxdb-storage-worklet-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.wcpos.rxdbstorageworklet"
+    },
+    "android": {
+      "package": "com.wcpos.rxdbstorageworklet",
+      "predictiveBackGestureEnabled": false
+    }
+  }
+}

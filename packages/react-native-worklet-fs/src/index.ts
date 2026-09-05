@@ -1,3 +1,6 @@
+import type { WorkletRuntime } from 'react-native-worklets';
+import type NativeWorkletFsType from './NativeWorkletFs.js';
+
 export interface WorkletFs {
   open(path: string, mode: 'r' | 'rw' | 'create'): number;
   readAt(fd: number, buffer: ArrayBuffer, at: number, length: number): number;
@@ -15,7 +18,7 @@ export interface WorkletFs {
   utf8Encode(text: string): ArrayBuffer;
 }
 
-export type InstallWorkletFs = (runtime?: unknown) => void;
+export type InstallWorkletFs = (runtime?: WorkletRuntime) => void;
 
 declare global {
   var __workletFs: WorkletFs | undefined;
@@ -26,4 +29,11 @@ export function getWorkletFs(): WorkletFs {
     throw new Error('WorkletFs is unavailable. Call installWorkletFs before using storage.');
   }
   return globalThis.__workletFs;
+}
+
+export function installWorkletFs(runtime?: WorkletRuntime): void {
+  // Kept lazy so the Node test implementation can import this module without loading React Native.
+  const loaded = require('./NativeWorkletFs') as { default?: typeof NativeWorkletFsType };
+  const native = loaded.default ?? (loaded as unknown as typeof NativeWorkletFsType);
+  native.install(runtime);
 }

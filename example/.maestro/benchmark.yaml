@@ -1,0 +1,95 @@
+appId: com.wcpos.rxdbstorageworklet
+---
+- launchApp
+- tapOn:
+    id: benchmark-js-filesystem
+- extendedWaitUntil:
+    visible:
+      id: benchmark-status
+      text: "Complete · JS thread / filesystem (expo-opfs)"
+    timeout: 600000
+- scrollUntilVisible:
+    element:
+      id: results-js-filesystem
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: benchmark-js-memory
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: benchmark-js-memory
+- extendedWaitUntil:
+    visible:
+      id: benchmark-status
+      text: "Complete · JS thread / memory"
+    timeout: 600000
+- scrollUntilVisible:
+    element:
+      id: results-js-memory
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: benchmark-worklet-filesystem
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: benchmark-worklet-filesystem
+- extendedWaitUntil:
+    visible:
+      id: benchmark-status
+      text: "Complete · worklet / filesystem"
+    timeout: 600000
+- scrollUntilVisible:
+    element:
+      id: results-worklet-filesystem
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: benchmark-worklet-memory
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: benchmark-worklet-memory
+- extendedWaitUntil:
+    visible:
+      id: benchmark-status
+      text: "Complete · worklet / memory"
+    timeout: 600000
+- scrollUntilVisible:
+    element:
+      id: results-worklet-memory
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: benchmark-sustained-js-filesystem
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: benchmark-sustained-js-filesystem
+- extendedWaitUntil:
+    visible:
+      id: benchmark-status
+      text: "Complete · sustained · JS thread / filesystem"
+    timeout: 600000
+- scrollUntilVisible:
+    element:
+      id: results-sustained-js-filesystem
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: benchmark-sustained-worklet-filesystem
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: benchmark-sustained-worklet-filesystem
+- extendedWaitUntil:
+    visible:
+      id: benchmark-status
+      text: "Complete · sustained · worklet / filesystem"
+    timeout: 600000
+- scrollUntilVisible:
+    element:
+      id: results-sustained-worklet-filesystem
+    direction: DOWN
+    timeout: 60000

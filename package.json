@@ -4,7 +4,8 @@
   "packageManager": "pnpm@11.22.0",
   "scripts": {
     "build": "pnpm -r build",
-    "test": "pnpm --workspace-concurrency=1 -r test",
+    "conformance": "node conformance/run.mjs",
+    "test": "vitest run benchmarks --minWorkers=1 --maxWorkers=2 && pnpm --workspace-concurrency=1 --filter './packages/**' -r test",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {

@@ -1,0 +1,39 @@
+{
+  "name": "rxdb-storage-worklet-example",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "postinstall": "patch-package",
+    "start": "expo start --dev-client",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "expo": "~57.0.20",
+    "expo-crypto": "~57.0.2",
+    "expo-file-system": "~57.0.6",
+    "expo-opfs": "1.0.9",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-reanimated": "~4.5.0",
+    "react-native-worklet-fs": "workspace:*",
+    "react-native-worklets": "0.11.4",
+    "rxdb": "17.4.0",
+    "rxdb-premium": "17.4.0",
+    "rxdb-storage-worklet": "workspace:*",
+    "rxjs": "7.8.2",
+    "uniwind": "1.11.0",
+    "worklet-opfs": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "babel-preset-expo": "~57.0.0",
+    "metro": "0.84.5",
+    "metro-runtime": "0.84.5",
+    "patch-package": "8.0.1",
+    "typescript": "~6.0.3"
+  }
+}

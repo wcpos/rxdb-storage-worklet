@@ -7,6 +7,14 @@
   "source": "./src/index.ts",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
+  "codegenConfig": {
+    "name": "WorkletFsSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.workletfs"
+    }
+  },
   "exports": {
     ".": {
       "react-native": "./src/index.ts",
@@ -20,10 +28,25 @@
       "default": "./lib/node.js"
     }
   },
-  "files": ["lib", "src"],
+  "files": [
+    "lib",
+    "src",
+    "cpp",
+    "apple",
+    "android/build.gradle",
+    "android/src",
+    "WorkletFs.podspec",
+    "react-native.config.js",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --maxWorkers=2",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "pnpm build"
+  },
+  "peerDependencies": {
+    "react-native": ">=0.86",
+    "react-native-worklets": ">=0.11"
   }
 }

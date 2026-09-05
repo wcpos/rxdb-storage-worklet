@@ -1,4 +1,15 @@
 packages:
   - packages/*
+  - example
 allowBuilds:
+  eccrypto: false
   esbuild: true
+  rxdb-premium: false
+  secp256k1: false
+overrides:
+  react: 19.2.3
+minimumReleaseAgeExclude:
+  - '@expo/cli@57.0.22'
+  - expo-modules-core@57.0.16
+  - expo-modules-jsi@57.0.8
+  - expo@57.0.20
