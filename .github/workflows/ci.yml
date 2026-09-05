@@ -41,10 +41,10 @@ jobs:
         run: |
           set -o pipefail
           node -e 'const v=process.env.RXDB_PREMIUM||"";console.log("token shape: len="+v.length+" starts0x="+v.startsWith("0x")+" hexonly="+/^(0x)?[0-9a-fA-F]+$/.test(v.trim()))'
-          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > .env
+          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > "$GITHUB_WORKSPACE/.env"
           unset RXDB_PREMIUM
-          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
-          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
       - if: env.HAS_RXDB_PREMIUM == 'true'
         run: pnpm typecheck
@@ -76,10 +76,10 @@ jobs:
         run: |
           set -o pipefail
           node -e 'const v=process.env.RXDB_PREMIUM||"";console.log("token shape: len="+v.length+" starts0x="+v.startsWith("0x")+" hexonly="+/^(0x)?[0-9a-fA-F]+$/.test(v.trim()))'
-          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > .env
+          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > "$GITHUB_WORKSPACE/.env"
           unset RXDB_PREMIUM
-          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
-          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
           npx expo prebuild --platform ios --no-install
       - if: env.HAS_RXDB_PREMIUM == 'true'
@@ -140,10 +140,10 @@ jobs:
         run: |
           set -o pipefail
           node -e 'const v=process.env.RXDB_PREMIUM||"";console.log("token shape: len="+v.length+" starts0x="+v.startsWith("0x")+" hexonly="+/^(0x)?[0-9a-fA-F]+$/.test(v.trim()))'
-          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > .env
+          printf "RXDB_PREMIUM=%s\n" "$RXDB_PREMIUM" > "$GITHUB_WORKSPACE/.env"
           unset RXDB_PREMIUM
-          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e accessToken -e access-tokens/
-          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e accessToken -e access-tokens/
+          node node_modules/rxdb-premium/scripts/postinstall.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
+          node node_modules/rxdb-premium/scripts/installer.js 2>&1 | grep -v -e "^accessToken: " -e "access-tokens/0x"
           test -d node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem
           npx expo prebuild --platform android --no-install
           mkdir -p /tmp/maestro
