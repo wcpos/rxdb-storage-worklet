@@ -11,7 +11,14 @@ const checkout = path.join(root, 'conformance/.rxdb');
 const tag = '17.4.0';
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, { cwd: options.cwd ?? root, env: options.env ?? process.env, encoding: 'utf8', stdio: options.stdio ?? 'inherit' });
+  const result = spawnSync(command, args, { cwd: options.cwd ?? root, env: options.env ?? process.env, encoding: 'utf8', stdio: options.filterPremium ? 'pipe' : options.stdio ?? 'inherit' });
+  if (options.filterPremium) {
+    for (const output of [result.stdout, result.stderr]) {
+      for (const line of (output ?? '').split('\n')) {
+        if (!/^accessToken: |access-tokens\/0x/.test(line)) console.log(line);
+      }
+    }
+  }
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed with exit code ${result.status}`);
   return result;
 }
@@ -24,21 +31,21 @@ async function prepareCheckout() {
   if (!existsSync(path.join(checkout, 'node_modules/.bin/mocha'))) run('npm', ['install', '--ignore-scripts', '--no-package-lock'], { cwd: checkout });
   if (!existsSync(path.join(checkout, 'node_modules/rxdb-premium/package.json'))) run('npm', ['install', '--ignore-scripts', '--no-save', '--no-package-lock', `rxdb-premium@${tag}`], { cwd: checkout });
 
-  if (!process.env.RXDB_PREMIUM) {
-    const commonGitDirectory = run('git', ['rev-parse', '--git-common-dir'], { stdio: 'pipe' }).stdout.trim();
-    const envFiles = [path.join(root, '.env'), path.join(path.dirname(commonGitDirectory), '.env')];
-    const envFile = envFiles.find(existsSync);
-    if (envFile) {
-      const match = (await readFile(envFile, 'utf8')).match(/^\s*(?:export\s+)?RXDB_PREMIUM\s*=\s*(.*)$/m);
-      if (match) process.env.RXDB_PREMIUM = match[1].trim().replace(/^['"]|['"]$/g, '');
-    }
+  const commonGitDirectory = run('git', ['rev-parse', '--git-common-dir'], { stdio: 'pipe' }).stdout.trim();
+  const envFiles = [path.join(root, '.env'), path.join(path.dirname(commonGitDirectory), '.env')];
+  const envFile = envFiles.find(existsSync);
+  if (envFile) {
+    const match = (await readFile(envFile, 'utf8')).match(/^\s*(?:export\s+)?RXDB_PREMIUM\s*=\s*(.*)$/m);
+    if (match) process.env.RXDB_PREMIUM = match[1];
   }
+  // Match the premium installer's .env handling, including for env-only callers.
+  if (process.env.RXDB_PREMIUM) process.env.RXDB_PREMIUM = process.env.RXDB_PREMIUM.replace(/[^a-zA-Z0-9]/g, '');
   const premiumMarker = path.join(checkout, 'node_modules/rxdb-premium/dist/esm/plugins/storage-abstract-filesystem/index.js');
   if (!existsSync(premiumMarker)) {
     if (!process.env.RXDB_PREMIUM) throw new Error('RXDB_PREMIUM is required for the conformance suite.');
     const scripts = path.join(checkout, 'node_modules/rxdb-premium/scripts');
-    run(process.execPath, [path.join(scripts, 'postinstall.js')], { cwd: checkout, stdio: 'ignore' });
-    run(process.execPath, [path.join(scripts, 'installer.js')], { cwd: checkout, stdio: 'ignore' });
+    run(process.execPath, [path.join(scripts, 'postinstall.js')], { cwd: checkout, filterPremium: true });
+    run(process.execPath, [path.join(scripts, 'installer.js')], { cwd: checkout, filterPremium: true });
   }
 
   run('pnpm', ['build']);
